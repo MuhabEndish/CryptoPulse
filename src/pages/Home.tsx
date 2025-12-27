@@ -1,18 +1,21 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../services/supabase";
-import { fetchMarketData } from "../services/cryptoApi";
-import Navbar from "../components/Navbar";
+import { fetchMarketData, fetchFearAndGreedIndex } from "../services/cryptoApi";
 import LoadingSpinner from "../components/LoadingSpinner";
+import PriceAlertModal from "../components/PriceAlertModal";
 
 export default function Home() {
   const user = useAuth();
+  const navigate = useNavigate();
   const [coins, setCoins] = useState<any[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<"rank" | "price" | "change">("rank");
-  const [filterBy, setFilterBy] = useState<"all" | "favorites">("all");
   const [loading, setLoading] = useState(true);
+  const [timeframe, setTimeframe] = useState<"1H" | "24H" | "7D">("24H");
+  const [fearGreedIndex, setFearGreedIndex] = useState<{value: number, classification: string} | null>(null);
+  const [alertModalOpen, setAlertModalOpen] = useState(false);
+  const [selectedCoin, setSelectedCoin] = useState<any>(null);
 
   async function loadFavorites() {
     if (!user) return;
@@ -30,14 +33,23 @@ export default function Home() {
       setCoins(data);
       setLoading(false);
     });
-  }, []);
+  }, [timeframe]); // Refetch when timeframe changes
 
   useEffect(() => {
     loadFavorites();
   }, [user]);
 
+  useEffect(() => {
+    fetchFearAndGreedIndex().then((data) => {
+      setFearGreedIndex(data);
+    });
+  }, []);
+
   async function toggleFavorite(coinId: string) {
-    if (!user) return;
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
 
     if (favorites.includes(coinId)) {
       await supabase.from("favorite_cryptos").delete().match({
@@ -54,220 +66,249 @@ export default function Home() {
     loadFavorites();
   }
 
-  if (!user) return <a href="/auth">Login to continue</a>;
-
-  // Filter by search
-  let filtered = coins.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  // Filter by favorites
-  if (filterBy === "favorites") {
-    filtered = filtered.filter((c) => favorites.includes(c.id));
+  function openAlertModal(coin: any) {
+    setSelectedCoin(coin);
+    setAlertModalOpen(true);
   }
 
-  // Sort
-  const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === "rank") return a.market_cap_rank - b.market_cap_rank;
-    if (sortBy === "price") return b.current_price - a.current_price;
-    if (sortBy === "change")
-      return b.price_change_percentage_24h - a.price_change_percentage_24h;
-    return 0;
-  });
+  // Show loading while checking auth
+  if (user === undefined || loading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <LoadingSpinner size="large" message="Loading..." />
+      </div>
+    );
+  }
+
+  if (!user) {
+    navigate('/auth');
+    return null;
+  }
+
+  // Get top coins for KPIs
+  const btc = coins.find(c => c.id === "bitcoin");
+  const totalMarketCap = coins.reduce((sum, c) => sum + (c.market_cap || 0), 0);
+  const avgChange = coins.length > 0
+    ? coins.reduce((sum, c) => sum + (c.price_change_percentage_24h || 0), 0) / coins.length
+    : 0;
 
   return (
-    <div className="container">
-      <Navbar />
-      <h1 style={{ marginBottom: "20px" }}>🔥 Crypto Social Tracker</h1>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+          <p className="text-gray-400 mt-1">Track crypto prices and market sentiment</p>
+        </div>
 
-      <input
-        placeholder="Search cryptocurrency..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        style={{
-          width: "100%",
-          padding: "12px",
-          borderRadius: "8px",
-          marginBottom: "15px",
-          background: "var(--card)",
-          color: "white",
-        }}
-      />
-
-      {/* Filter and Sort Controls */}
-      <div
-        className="flex-responsive"
-        style={{
-          marginBottom: "20px",
-        }}
-      >
-        <select
-          value={filterBy}
-          onChange={(e) => setFilterBy(e.target.value as any)}
-          style={{
-            padding: "10px 14px",
-            borderRadius: "8px",
-            background: "var(--card)",
-            color: "white",
-            border: "1px solid rgba(139, 92, 246, 0.3)",
-            cursor: "pointer",
-            flex: "1 1 140px",
-            minWidth: "140px",
-            fontSize: "clamp(13px, 2vw, 15px)",
-            transition: "all 0.3s ease",
-          }}
-        >
-          <option value="all">All Coins</option>
-          <option value="favorites">⭐ Favorites Only</option>
-        </select>
-
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as any)}
-          style={{
-            padding: "10px 14px",
-            borderRadius: "8px",
-            background: "var(--card)",
-            color: "white",
-            border: "1px solid rgba(139, 92, 246, 0.3)",
-            cursor: "pointer",
-            flex: "1 1 140px",
-            minWidth: "140px",
-            fontSize: "clamp(13px, 2vw, 15px)",
-            transition: "all 0.3s ease",
-          }}
-        >
-          <option value="rank">Sort by Rank</option>
-          <option value="price">Sort by Price</option>
-          <option value="change">Sort by 24h Change</option>
-        </select>
+        {/* Timeframe Selector */}
+        <div className="flex gap-2 bg-dark-card rounded-lg p-1 border border-dark-border">
+          {(["1H", "24H", "7D"] as const).map((tf) => (
+            <button
+              key={tf}
+              onClick={() => setTimeframe(tf)}
+              className={`px-4 py-2 rounded-md font-medium transition-all ${
+                timeframe === tf
+                  ? "bg-primary text-white shadow-glow"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              {tf}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {loading ? (
-        <LoadingSpinner size="medium" message="Loading cryptocurrencies..." />
-      ) : sorted.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "40px", opacity: 0.6 }}>
-          <p>No cryptocurrencies found.</p>
-        </div>
-      ) : (
-        sorted.map((coin) => (
-        <div
-          key={coin.id}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "clamp(12px, 3vw, 18px)",
-            background: "var(--card)",
-            borderRadius: "10px",
-            marginBottom: "12px",
-            boxShadow: "0 0 12px rgba(139, 92, 246, 0.2)",
-            transition: "all 0.3s ease",
-            flexWrap: "wrap",
-            gap: "10px",
-          }}
-        >
-          {/* Left side */}
-          <div
-            onClick={() => (window.location.href = `/coin/${coin.id}`)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "clamp(8px, 2vw, 12px)",
-              cursor: "pointer",
-              flex: "1 1 auto",
-              minWidth: "150px",
-            }}
-          >
-            <img
-              src={coin.image}
-              alt={coin.name}
-              width={30}
-              height={30}
-              style={{
-                width: "clamp(24px, 5vw, 30px)",
-                height: "clamp(24px, 5vw, 30px)",
-                objectFit: "contain",
-              }}
-            />
-            <div style={{ minWidth: 0 }}>
-              <div style={{
-                fontWeight: "600",
-                fontSize: "clamp(14px, 2.5vw, 16px)",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}>
-                {coin.name}
-              </div>
-              <div style={{
-                opacity: 0.6,
-                fontSize: "clamp(12px, 2vw, 14px)",
-              }}>
-                {coin.symbol.toUpperCase()}
-              </div>
-            </div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        {/* BTC Price */}
+        <div className="bg-dark-card border border-dark-border rounded-xl p-6 hover:shadow-glow transition-all">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-gray-400 text-sm font-medium">Bitcoin Price</span>
+            <span className="text-2xl">₿</span>
           </div>
+          <div className="text-2xl font-bold text-white mb-1">
+            ${btc ? btc.current_price.toLocaleString() : "—"}
+          </div>
+          <div className={`text-sm font-medium ${btc && btc.price_change_percentage_24h > 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {btc ? `${btc.price_change_percentage_24h > 0 ? '↑' : '↓'} ${Math.abs(btc.price_change_percentage_24h).toFixed(2)}%` : '—'}
+          </div>
+        </div>
 
-          {/* Price */}
-          <div style={{
-            textAlign: "right",
-            flex: "0 1 auto",
-            minWidth: "100px",
-          }}>
-            <div style={{
-              fontSize: "clamp(14px, 2.5vw, 16px)",
-              fontWeight: "600",
-            }}>
-              ${coin.current_price.toLocaleString()}
-            </div>
+        {/* Market Cap */}
+        <div className="bg-dark-card border border-dark-border rounded-xl p-6 hover:shadow-glow transition-all">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-gray-400 text-sm font-medium">Total Market Cap</span>
+            <span className="text-2xl">💹</span>
+          </div>
+          <div className="text-2xl font-bold text-white mb-1">
+            ${(totalMarketCap / 1e12).toFixed(2)}T
+          </div>
+          <div className="text-sm text-gray-400">
+            {coins.length} coins tracked
+          </div>
+        </div>
+
+        {/* 24h Change */}
+        <div className="bg-dark-card border border-dark-border rounded-xl p-6 hover:shadow-glow transition-all">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-gray-400 text-sm font-medium">Avg 24h Change</span>
+            <span className="text-2xl">📊</span>
+          </div>
+          <div className={`text-2xl font-bold mb-1 ${avgChange > 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {avgChange > 0 ? '↑' : '↓'} {Math.abs(avgChange).toFixed(2)}%
+          </div>
+          <div className="text-sm text-gray-400">
+            Market average
+          </div>
+        </div>
+
+        {/* Watchlist */}
+        <div className="bg-dark-card border border-dark-border rounded-xl p-6 hover:shadow-glow transition-all cursor-pointer"
+             onClick={() => navigate('/favorites')}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-gray-400 text-sm font-medium">My Watchlist</span>
+            <span className="text-2xl">⭐</span>
+          </div>
+          <div className="text-2xl font-bold text-white mb-1">
+            {favorites.length}
+          </div>
+          <div className="text-sm text-primary font-medium">
+            View all →
+          </div>
+        </div>
+
+        {/* Fear & Greed Index */}
+        <div className="bg-dark-card border border-dark-border rounded-xl p-6 hover:shadow-glow transition-all">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-gray-400 text-sm font-medium">Fear & Greed</span>
+            <span className="text-2xl">😱</span>
+          </div>
+          <div className={`text-2xl font-bold mb-1 ${
+            !fearGreedIndex ? 'text-gray-400' :
+            fearGreedIndex.value <= 25 ? 'text-red-500' :
+            fearGreedIndex.value <= 45 ? 'text-orange-400' :
+            fearGreedIndex.value <= 55 ? 'text-yellow-400' :
+            fearGreedIndex.value <= 75 ? 'text-green-400' :
+            'text-green-500'
+          }`}>
+            {fearGreedIndex ? fearGreedIndex.value : '—'}
+          </div>
+          <div className="text-sm text-gray-400">
+            {fearGreedIndex ? fearGreedIndex.classification : 'Loading...'}
+          </div>
+        </div>
+      </div>
+
+      {/* Trending Coins Section */}
+      <div className="bg-dark-card border border-dark-border rounded-xl p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-white">🔥 Trending Coins</h2>
+          <button className="text-sm text-primary hover:text-primary-light font-medium transition-colors">
+            View All
+          </button>
+        </div>
+
+        {/* Coins Table */}
+        <div className="space-y-3">
+          {coins.slice(0, 10).map((coin, index) => (
             <div
-              style={{
-                color: coin.price_change_percentage_24h > 0 ? "#10b981" : "#ef4444",
-                fontSize: "clamp(12px, 2vw, 14px)",
-                fontWeight: "500",
-              }}
+              key={coin.id}
+              onClick={() => navigate(`/coin/${coin.id}`)}
+              className="flex items-center justify-between p-4 rounded-lg hover:bg-dark transition-all cursor-pointer group"
             >
-              {coin.price_change_percentage_24h > 0 ? "↑" : "↓"} {Math.abs(coin.price_change_percentage_24h).toFixed(2)}%
+              {/* Left: Rank, Logo, Name */}
+              <div className="flex items-center gap-4 flex-1 min-w-0">
+                <span className="text-gray-500 font-medium w-6">{index + 1}</span>
+                <img
+                  src={coin.image}
+                  alt={coin.name}
+                  className="w-8 h-8 rounded-full"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-white group-hover:text-primary transition-colors">
+                    {coin.name}
+                  </div>
+                  <div className="text-sm text-gray-400 uppercase">
+                    {coin.symbol}
+                  </div>
+                </div>
+              </div>
+
+              {/* Middle: Price */}
+              <div className="text-right px-4 hidden sm:block">
+                <div className="font-semibold text-white">
+                  ${coin.current_price.toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-400">
+                  MCap: ${(coin.market_cap / 1e9).toFixed(2)}B
+                </div>
+              </div>
+
+              {/* Right: Change & Actions */}
+              <div className="flex items-center gap-3">
+                <div className={`font-semibold ${
+                  coin.price_change_percentage_24h > 0 ? 'text-green-400' : 'text-red-400'
+                }`}>
+                  {coin.price_change_percentage_24h > 0 ? '↑' : '↓'}
+                  {Math.abs(coin.price_change_percentage_24h).toFixed(2)}%
+                </div>
+
+                {/* Favorite Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleFavorite(coin.id);
+                  }}
+                  className={`text-2xl transition-transform hover:scale-125 ${
+                    favorites.includes(coin.id) ? 'text-primary' : 'text-gray-600'
+                  }`}
+                >
+                  {favorites.includes(coin.id) ? '★' : '☆'}
+                </button>
+
+                {/* Alert Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openAlertModal(coin);
+                  }}
+                  className="text-xl text-gray-600 hover:text-yellow-400 transition-all"
+                  title="Set Alert"
+                >
+                  🔔
+                </button>
+              </div>
             </div>
-          </div>
-
-          {/* Favorite Button */}
-          <div
-            onClick={() => toggleFavorite(coin.id)}
-            style={{
-              cursor: "pointer",
-              fontSize: "clamp(20px, 4vw, 24px)",
-              color: favorites.includes(coin.id) ? "#a855f7" : "#555",
-              transition: "all 0.3s ease",
-              padding: "4px 8px",
-              userSelect: "none",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.2)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-            }}
-          >
-            ♥
-          </div>
+          ))}
         </div>
-        ))
-      )}
+      </div>
 
-      <button
-        onClick={async () => await supabase.auth.signOut()}
-        style={{
-          background: "var(--accent)",
-          padding: "10px",
-          borderRadius: "8px",
-          marginTop: "30px",
-          width: "100%",
-        }}
-      >
-        Logout
-      </button>
+      {/* Trending Topics */}
+      <div className="bg-dark-card border border-dark-border rounded-xl p-6">
+        <h2 className="text-xl font-bold text-white mb-4">💬 Trending Topics</h2>
+        <div className="flex flex-wrap gap-2">
+          {['#Bitcoin', '#Ethereum', '#DeFi', '#NFT', '#Altseason', '#BullRun'].map((tag) => (
+            <button
+              key={tag}
+              onClick={() => navigate(`/search?q=${encodeURIComponent(tag)}`)}
+              className="px-4 py-2 bg-dark rounded-lg text-primary hover:bg-primary hover:text-white transition-all font-medium"
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Price Alert Modal */}
+      {selectedCoin && user && (
+        <PriceAlertModal
+          isOpen={alertModalOpen}
+          onClose={() => setAlertModalOpen(false)}
+          coin={selectedCoin}
+          userId={user.id}
+        />
+      )}
     </div>
   );
 }

@@ -191,21 +191,32 @@ export default function Search() {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select(`
-          *,
-          posts:posts(count),
-          followers:profiles(count)
-        `)
-        .ilike("username", `%${query}%`)
+        .select("id, username, email, bio, avatar_url, created_at")
+        .or(`username.ilike.%${query}%,email.ilike.%${query}%`)
         .limit(20);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error searching users:", error);
+        throw error;
+      }
 
-      const usersWithCounts = (data || []).map((user) => ({
-        ...user,
-        posts_count: user.posts?.[0]?.count || 0,
-        followers_count: user.followers?.[0]?.count || 0,
-      }));
+      console.log("Users search results:", data);
+
+      // Manually get post counts for each user
+      const usersWithCounts = await Promise.all(
+        (data || []).map(async (user) => {
+          const { count: postsCount } = await supabase
+            .from("posts")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", user.id);
+
+          return {
+            ...user,
+            posts_count: postsCount || 0,
+            followers_count: 0, // You can implement followers later
+          };
+        })
+      );
 
       setUsers(usersWithCounts);
     } catch (error) {
@@ -224,93 +235,64 @@ export default function Search() {
     }
   };
 
-  const tabStyle = (active: boolean) => ({
-    flex: 1,
-    padding: "12px 20px",
-    borderRadius: "10px",
-    border: "none",
-    background: active ? "var(--accent)" : "var(--card)",
-    color: "white",
-    fontSize: "15px",
-    fontWeight: 600,
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-    boxShadow: active ? "0 4px 12px rgba(139, 92, 246, 0.4)" : "none",
-  });
-
   return (
-    <div style={{ padding: "clamp(15px, 3vw, 20px)", maxWidth: "900px", margin: "0 auto" }}>
-      {/* Back Button */}
-      <button
-        onClick={() => navigate("/")}
-        style={{
-          padding: "10px 20px",
-          borderRadius: "10px",
-          border: "none",
-          background: "var(--card)",
-          color: "white",
-          fontSize: "15px",
-          fontWeight: 600,
-          cursor: "pointer",
-          transition: "all 0.3s ease",
-          marginBottom: "20px",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = "translateX(-5px)";
-          e.currentTarget.style.background = "var(--accent)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "translateX(0)";
-          e.currentTarget.style.background = "var(--card)";
-        }}
-      >
-        ← الرجوع للصفحة الرئيسية
-      </button>
-
-      <h1 style={{ fontSize: "clamp(24px, 5vw, 32px)", marginBottom: "10px" }}>
-        🔍 نتائج البحث
-      </h1>
-      <p style={{ color: "#aaa", marginBottom: "30px", fontSize: "clamp(14px, 2.5vw, 16px)" }}>
-        البحث عن: <strong style={{ color: "var(--accent)" }}>{query}</strong>
-      </p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-white mb-2">🔍 Search Results</h1>
+        <p className="text-gray-400">
+          Searching for: <span className="text-primary font-semibold">{query || "..."}</span>
+        </p>
+      </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: "10px", marginBottom: "30px" }}>
+      <div className="flex gap-2 bg-dark-card border border-dark-border rounded-lg p-1">
         <button
-          style={tabStyle(activeTab === "posts")}
           onClick={() => setActiveTab("posts")}
+          className={`flex-1 px-6 py-3 rounded-md font-medium transition-all ${
+            activeTab === "posts"
+              ? "bg-primary text-white shadow-glow"
+              : "text-gray-400 hover:text-white"
+          }`}
         >
-          💬 منشورات ({posts.length})
+          💬 Posts ({posts.length})
         </button>
         <button
-          style={tabStyle(activeTab === "users")}
           onClick={() => setActiveTab("users")}
+          className={`flex-1 px-6 py-3 rounded-md font-medium transition-all ${
+            activeTab === "users"
+              ? "bg-primary text-white shadow-glow"
+              : "text-gray-400 hover:text-white"
+          }`}
         >
-          👤 مستخدمين ({users.length})
+          👤 Users ({users.length})
         </button>
         <button
-          style={tabStyle(activeTab === "cryptos")}
           onClick={() => setActiveTab("cryptos")}
+          className={`flex-1 px-6 py-3 rounded-md font-medium transition-all ${
+            activeTab === "cryptos"
+              ? "bg-primary text-white shadow-glow"
+              : "text-gray-400 hover:text-white"
+          }`}
         >
-          🪙 عملات ({cryptos.length})
+          🪙 Cryptos ({cryptos.length})
         </button>
       </div>
 
       {/* Content */}
       {loading ? (
-        <LoadingSpinner />
+        <div className="flex justify-center py-12">
+          <LoadingSpinner size="medium" message="Searching..." />
+        </div>
       ) : (
-        <>
+        <div>
           {/* Posts Tab */}
           {activeTab === "posts" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+            <div className="space-y-4">
               {posts.length === 0 ? (
-                <p style={{ textAlign: "center", color: "#aaa", padding: "40px" }}>
-                  لم يتم العثور على منشورات 🔍
-                </p>
+                <div className="bg-dark-card border border-dark-border rounded-xl p-12 text-center">
+                  <p className="text-gray-400">No posts found 🔍</p>
+                </div>
               ) : (
                 posts.map((post) => <PostCard key={post.id} post={post} onChange={searchPosts} />)
               )}
@@ -319,68 +301,38 @@ export default function Search() {
 
           {/* Users Tab */}
           {activeTab === "users" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+            <div className="space-y-4">
               {users.length === 0 ? (
-                <p style={{ textAlign: "center", color: "#aaa", padding: "40px" }}>
-                  لم يتم العثور على مستخدمين 🔍
-                </p>
+                <div className="bg-dark-card border border-dark-border rounded-xl p-12 text-center">
+                  <p className="text-gray-400">No users found 🔍</p>
+                </div>
               ) : (
                 users.map((user) => (
                   <Link
                     key={user.id}
                     to={`/profile/${user.id}`}
-                    style={{
-                      textDecoration: "none",
-                      background: "var(--card)",
-                      borderRadius: "12px",
-                      padding: "20px",
-                      transition: "all 0.3s ease",
-                      display: "flex",
-                      gap: "15px",
-                      alignItems: "center",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-2px)";
-                      e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.3)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.boxShadow = "none";
-                    }}
+                    className="flex items-center gap-4 p-6 bg-dark-card border border-dark-border rounded-xl hover:shadow-glow transition-all group"
                   >
                     <div
+                      className="w-16 h-16 rounded-full flex items-center justify-center text-2xl shrink-0"
                       style={{
-                        width: "60px",
-                        height: "60px",
-                        borderRadius: "50%",
                         background: user.avatar_url
                           ? `url(${user.avatar_url}) center/cover`
                           : "linear-gradient(135deg, var(--accent), #ec4899)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "24px",
-                        flexShrink: 0,
                       }}
                     >
                       {!user.avatar_url && "👤"}
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ margin: 0, fontSize: "18px", color: "white" }}>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-semibold text-white group-hover:text-primary transition-colors">
                         {user.username}
                       </h3>
                       {user.bio && (
-                        <p style={{ margin: "5px 0 0", color: "#aaa", fontSize: "14px" }}>
-                          {user.bio}
-                        </p>
+                        <p className="text-sm text-gray-400 mt-1 line-clamp-2">{user.bio}</p>
                       )}
-                      <div style={{ display: "flex", gap: "15px", marginTop: "10px", fontSize: "13px" }}>
-                        <span style={{ color: "#888" }}>
-                          📝 {user.posts_count} منشورات
-                        </span>
-                        <span style={{ color: "#888" }}>
-                          👥 {user.followers_count} متابعين
-                        </span>
+                      <div className="flex gap-4 mt-2 text-sm text-gray-500">
+                        <span>📝 {user.posts_count} posts</span>
+                        <span>👥 {user.followers_count} followers</span>
                       </div>
                     </div>
                   </Link>
@@ -391,60 +343,37 @@ export default function Search() {
 
           {/* Cryptos Tab */}
           {activeTab === "cryptos" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+            <div className="space-y-4">
               {cryptos.length === 0 ? (
-                <p style={{ textAlign: "center", color: "#aaa", padding: "40px" }}>
-                  لم يتم العثور على عملات رقمية 🔍
-                </p>
+                <div className="bg-dark-card border border-dark-border rounded-xl p-12 text-center">
+                  <p className="text-gray-400">No cryptocurrencies found 🔍</p>
+                </div>
               ) : (
                 cryptos.map((crypto) => (
                   <Link
                     key={crypto.id}
                     to={`/coin/${crypto.id}`}
-                    style={{
-                      textDecoration: "none",
-                      background: "var(--card)",
-                      borderRadius: "12px",
-                      padding: "20px",
-                      transition: "all 0.3s ease",
-                      display: "flex",
-                      gap: "15px",
-                      alignItems: "center",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-2px)";
-                      e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.3)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.boxShadow = "none";
-                    }}
+                    className="flex items-center gap-4 p-6 bg-dark-card border border-dark-border rounded-xl hover:shadow-glow transition-all group"
                   >
                     <img
                       src={crypto.image}
                       alt={crypto.name}
-                      style={{ width: "50px", height: "50px", borderRadius: "50%", flexShrink: 0 }}
+                      className="w-14 h-14 rounded-full shrink-0"
                     />
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ margin: 0, fontSize: "18px", color: "white" }}>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-semibold text-white group-hover:text-primary transition-colors">
                         {crypto.name}
                       </h3>
-                      <p style={{ margin: "5px 0 0", color: "#aaa", fontSize: "14px" }}>
-                        {crypto.symbol.toUpperCase()}
-                      </p>
+                      <p className="text-sm text-gray-400 uppercase mt-1">{crypto.symbol}</p>
                     </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: "18px", fontWeight: "bold", color: "white" }}>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-white">
                         ${crypto.current_price.toLocaleString()}
                       </div>
-                      <div
-                        style={{
-                          fontSize: "14px",
-                          color: crypto.price_change_percentage_24h >= 0 ? "#10b981" : "#ef4444",
-                          marginTop: "5px",
-                        }}
-                      >
-                        {crypto.price_change_percentage_24h >= 0 ? "▲" : "▼"}{" "}
+                      <div className={`text-sm font-medium mt-1 ${
+                        crypto.price_change_percentage_24h >= 0 ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {crypto.price_change_percentage_24h >= 0 ? '↑' : '↓'}
                         {Math.abs(crypto.price_change_percentage_24h).toFixed(2)}%
                       </div>
                     </div>
@@ -453,7 +382,7 @@ export default function Search() {
               )}
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );

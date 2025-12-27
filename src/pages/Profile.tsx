@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase, uploadAvatar } from "../services/supabase";
 import { useAuth } from "../hooks/useAuth";
-import Navbar from "../components/Navbar";
 import PostCard from "../components/PostCard";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useToast } from "../components/ToastProvider";
@@ -26,12 +25,12 @@ export default function Profile() {
   const [bio, setBio] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  // تحديد ما إذا كان هذا هو ملفك الشخصي
+  // Determine if this is your own profile
   const isOwnProfile = !userId || userId === currentUser?.id;
   const profileUserId = userId || currentUser?.id;
 
   useEffect(() => {
-    // إذا كان هناك userId في الرابط، تحميل الملف مباشرة
+    // If there's a userId in the URL, load profile directly
     if (userId) {
       loadProfile();
 
@@ -83,11 +82,11 @@ export default function Profile() {
       };
     }
 
-    // إذا لم يكن هناك userId، انتظر حتى يتم تحميل currentUser
+    // If there’s no userId, wait until currentUser is loaded
     if (currentUser) {
       loadProfile();
 
-      // ✅ Real-time subscriptions للمستخدم الحالي
+      // ✅ Real-time subscriptions for current user
       const postsChannel = supabase
         .channel(`my-posts-${currentUser.id}`)
         .on(
@@ -133,17 +132,16 @@ export default function Profile() {
         supabase.removeChannel(likesChannel);
         supabase.removeChannel(commentsChannel);
       };
-    } else if (currentUser === null) {
-      // فقط إذا كان currentUser تم تحميله وهو null، توجه للـ auth
-      const checkAuth = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          navigate("/auth");
-        }
-      };
-      checkAuth();
     }
   }, [profileUserId, currentUser, userId]);
+
+  // Redirect to auth if not logged in (after loading)
+  useEffect(() => {
+    if (currentUser === null && !userId) {
+      // Only redirect if trying to view own profile and not authenticated
+      navigate("/auth");
+    }
+  }, [currentUser, userId, navigate]);
 
   async function loadProfile() {
     if (!profileUserId) return;
@@ -151,7 +149,7 @@ export default function Profile() {
     setLoading(true);
 
     try {
-      // جلب معلومات المستخدم
+      // Fetch user information
       const { data: userData, error: userError } = await supabase
         .from("profiles")
         .select("*")
@@ -162,7 +160,7 @@ export default function Profile() {
         console.error("Error loading profile:", userError);
       }
 
-      // إذا لم يوجد profile، استخدم email من auth
+      // If no profile exists, use email from auth
       if (!userData) {
         const { data: authData } = await supabase.auth.getUser();
         setProfile({
@@ -178,7 +176,7 @@ export default function Profile() {
         setBio(userData.bio || "");
       }
 
-      // جلب منشورات المستخدم
+      // Fetch user posts
       const { data: postsData, error: postsError } = await supabase
         .from("posts")
         .select(`
@@ -200,7 +198,7 @@ export default function Profile() {
         }));
         setPosts(postsWithAuthor);
 
-        // حساب الإحصائيات
+        // Calculate statistics
         const postsCount = postsData?.length || 0;
         const likesReceived = postsData?.reduce(
           (sum, post) => sum + (post.likes?.length || 0),
@@ -225,19 +223,19 @@ export default function Profile() {
     const file = e.target.files?.[0];
     if (!file || !currentUser) return;
 
-    // التحقق من نوع الملف
+    // Verify file type
     if (!file.type.startsWith('image/')) {
-      showToast("الرجاء اختيار صورة فقط!", "error");
+      showToast("Please select an image only!", "error");
       return;
     }
 
-    // التحقق من حجم الملف (2 MB)
+    // Verify file size (2 MB)
     if (file.size > 2 * 1024 * 1024) {
-      showToast("حجم الصورة كبير جداً! الحد الأقصى 2 ميجابايت", "error");
+      showToast("Image size is too large! Maximum 2 MB", "error");
       return;
     }
 
-    // 🚫 التحقق من اسم الملف
+    // 🚫 Verify filename
     const { moderateContent, INAPPROPRIATE_CONTENT_MESSAGE } = await import("../utils/contentModeration");
     const moderation = moderateContent("", file.name);
     if (!moderation.isClean) {
@@ -251,7 +249,7 @@ export default function Profile() {
       const avatarUrl = await uploadAvatar(file, currentUser.id);
 
       if (avatarUrl) {
-        // تحديث قاعدة البيانات
+        // Update database
         const { error } = await supabase
           .from("profiles")
           .upsert({
@@ -262,12 +260,12 @@ export default function Profile() {
 
         if (error) throw error;
 
-        showToast("تم تحديث صورة الملف الشخصي بنجاح!", "success");
+        showToast("Profile picture updated successfully!", "success");
         loadProfile();
       }
     } catch (error: any) {
       console.error("Error uploading avatar:", error);
-      showToast(error.message || "فشل رفع الصورة. حاول مرة أخرى.", "error");
+      showToast(error.message || "Failed to upload image. Try again.", "error");
     } finally {
       setUploadingAvatar(false);
     }
@@ -277,28 +275,31 @@ export default function Profile() {
     if (!currentUser) return;
 
     try {
-      const { error } = await supabase.from("profiles").upsert({
-        id: currentUser.id,
-        username: username.trim(),
-        bio: bio.trim(),
-        updated_at: new Date().toISOString(),
-      });
+      // Use UPDATE instead of UPSERT to avoid NOT NULL constraint issues
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          username: username.trim(),
+          bio: bio.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", currentUser.id);
 
       if (error) throw error;
 
       setIsEditing(false);
-      showToast("تم تحديث الملف الشخصي بنجاح!", "success");
+      showToast("Profile updated successfully!", "success");
       loadProfile();
     } catch (error) {
       console.error("Error saving profile:", error);
-      showToast("فشل تحديث الملف الشخصي", "error");
+      showToast("Failed to update profile", "error");
     }
   }
 
-  if (loading) {
+  // Show loading while checking auth or loading profile
+  if (currentUser === undefined || loading) {
     return (
-      <div className="container">
-        <Navbar />
+      <div className="flex justify-center py-12">
         <LoadingSpinner size="large" message="Loading profile..." />
       </div>
     );
@@ -306,31 +307,20 @@ export default function Profile() {
 
   if (!profile) {
     return (
-      <div className="container">
-        <Navbar />
-        <div style={{ textAlign: "center", padding: "40px", opacity: 0.6 }}>
-          <p>Profile not found</p>
-          <button
-            onClick={() => navigate("/feed")}
-            style={{
-              marginTop: "20px",
-              padding: "10px 20px",
-              background: "var(--accent)",
-              borderRadius: "8px",
-              color: "white",
-            }}
-          >
-            Back to Feed
-          </button>
-        </div>
+      <div className="bg-dark-card border border-dark-border rounded-xl p-12 text-center">
+        <p className="text-gray-400 mb-4">Profile not found</p>
+        <button
+          onClick={() => navigate("/feed")}
+          className="px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-all"
+        >
+          Back to Feed
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="container">
-      <Navbar />
-
+    <div className="space-y-6">
       {/* Profile Header */}
       <div
         className="card"
@@ -362,7 +352,7 @@ export default function Profile() {
             {!profile.avatar_url && (profile.username || profile.email || "U")[0].toUpperCase()}
           </div>
 
-          {/* زر تغيير الصورة (للملف الشخصي فقط) */}
+          {/* Change picture button (for own profile only) */}
           {isOwnProfile && (
             <label
               htmlFor="avatar-upload"

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../services/supabase";
 import { useAuth } from "../hooks/useAuth";
-import Navbar from "./Navbar";
 import NewComment from "./NewComment";
 import CommentCard from "./CommentCard";
 import LoadingSpinner from "./LoadingSpinner";
@@ -234,7 +233,6 @@ export default function PostView() {
   if (!user) {
     return (
       <div className="container">
-        <Navbar />
         <p style={{ textAlign: "center", marginTop: "40px" }}>
           <a href="/auth" style={{ color: "var(--accent)" }}>
             Login to continue
@@ -247,7 +245,6 @@ export default function PostView() {
   if (loading) {
     return (
       <div className="container">
-        <Navbar />
         <LoadingSpinner size="medium" message="Loading post..." />
       </div>
     );
@@ -256,7 +253,6 @@ export default function PostView() {
   if (!post) {
     return (
       <div className="container">
-        <Navbar />
         <p style={{ textAlign: "center", marginTop: "40px" }}>
           Post not found
         </p>
@@ -268,8 +264,6 @@ export default function PostView() {
 
   return (
     <div className="container">
-      <Navbar />
-
       {/* Back Button */}
       <button
         onClick={() => navigate("/feed")}

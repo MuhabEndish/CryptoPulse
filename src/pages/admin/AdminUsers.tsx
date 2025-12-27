@@ -9,6 +9,7 @@ import {
   supabase
 } from '../../services/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import AdminHeader from '../../components/AdminHeader';
 
 interface User {
   id: string;
@@ -58,14 +59,14 @@ export default function AdminUsers() {
   }
 
   async function handleBanUser(userId: string, username: string) {
-    const reason = prompt(`سبب حظر ${username}:`);
+    const reason = prompt(`Ban reason for ${username}:`);
     if (!reason) return;
 
-    const isPermanent = confirm('حظر دائم؟\n\nاضغط OK للحظر الدائم\nاضغط Cancel للحظر المؤقت');
+    const isPermanent = confirm('Permanent ban?\n\nPress OK for permanent ban\nPress Cancel for temporary ban');
 
     let bannedUntil: string | undefined;
     if (!isPermanent) {
-      const days = prompt('عدد أيام الحظر:', '7');
+      const days = prompt('Number of days for ban:', '7');
       if (!days || isNaN(Number(days))) return;
       const date = new Date();
       date.setDate(date.getDate() + parseInt(days));
@@ -80,46 +81,46 @@ export default function AdminUsers() {
     );
 
     if (result.success) {
-      alert('✅ تم حظر المستخدم بنجاح');
+      alert('✅ User banned successfully');
       loadUsers();
     } else {
-      alert('❌ ' + (result.error || 'حدث خطأ في الحظر'));
+      alert('❌ ' + (result.error || 'An error occurred during the ban'));
     }
   }
 
   async function handleUnbanUser(userId: string, username: string) {
-    if (!confirm(`هل تريد إلغاء حظر ${username}؟`)) return;
+    if (!confirm(`Do you want to unban ${username}?`)) return;
 
     const result = await unbanUser(userId);
     if (result.success) {
-      alert('✅ تم إلغاء الحظر بنجاح');
+      alert('✅ User unbanned successfully');
       loadUsers();
     } else {
-      alert('❌ حدث خطأ');
+      alert('❌ An error occurred');
     }
   }
 
   async function handleDeleteUser(userId: string, username: string) {
     if (!adminData?.permissions?.delete_users) {
-      alert('❌ ليس لديك صلاحية حذف المستخدمين (Super Admin فقط)');
+      alert('❌ You do not have permission to delete users (Super Admin only)');
       return;
     }
 
     const confirmation = prompt(
-      `⚠️ تحذير: حذف المستخدم نهائياً!\n\nسيتم حذف:\n- حساب المستخدم\n- جميع منشوراته\n- جميع تعليقاته\n- جميع إعجاباته\n\nلتأكيد الحذف، اكتب اسم المستخدم: ${username}`
+      `⚠️ Warning: Delete user permanently!\n\nThis will delete:\n- User account\n- All their posts\n- All their comments\n- All their likes\n\nTo confirm deletion, type the username: ${username}`
     );
 
     if (confirmation !== username) {
-      alert('❌ تم إلغاء العملية');
+      alert('❌ Operation cancelled');
       return;
     }
 
     const result = await deleteUser(userId);
     if (result.success) {
-      alert('✅ تم حذف المستخدم نهائياً');
+      alert('✅ User deleted permanently');
       loadUsers();
     } else {
-      alert('❌ حدث خطأ في الحذف');
+      alert('❌ An error occurred during deletion');
     }
   }
 
@@ -161,7 +162,7 @@ export default function AdminUsers() {
             </button>
             <span style={{ fontSize: '32px' }}>👥</span>
             <h1 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>
-              إدارة المستخدمين
+              User Management
             </h1>
           </div>
           <button
@@ -177,7 +178,7 @@ export default function AdminUsers() {
               color: '#c33'
             }}
           >
-            🚪 تسجيل الخروج
+            🚺 Logout
           </button>
         </div>
       </header>
@@ -193,7 +194,7 @@ export default function AdminUsers() {
           }}>
             <input
               type="text"
-              placeholder="🔍 البحث عن مستخدم (الاسم أو البريد)..."
+              placeholder="🔍 Search user (name or email)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
@@ -226,7 +227,7 @@ export default function AdminUsers() {
                   transition: 'all 0.2s'
                 }}
               >
-                {f === 'all' ? '👥 الكل' : f === 'active' ? '✅ النشطون' : '🚫 المحظورون'}
+                {f === 'all' ? '👥 All' : f === 'active' ? '✅ Active' : '🚫 Banned'}
               </button>
             ))}
           </div>
@@ -246,7 +247,7 @@ export default function AdminUsers() {
             border: '2px solid var(--border)'
           }}>
             <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-              إجمالي المستخدمين
+              Total Users
             </div>
             <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--accent)' }}>
               {users.length}
@@ -259,7 +260,7 @@ export default function AdminUsers() {
             border: '2px solid var(--border)'
           }}>
             <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-              المحظورون
+              Banned Users
             </div>
             <div style={{ fontSize: '32px', fontWeight: '700', color: '#ef4444' }}>
               {users.filter(u => u.banned && u.banned.length > 0).length}
@@ -272,7 +273,7 @@ export default function AdminUsers() {
             border: '2px solid var(--border)'
           }}>
             <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-              النشطون
+              Active Users
             </div>
             <div style={{ fontSize: '32px', fontWeight: '700', color: '#10b981' }}>
               {users.filter(u => !u.banned || u.banned.length === 0).length}
@@ -294,7 +295,7 @@ export default function AdminUsers() {
           }}>
             <div style={{ fontSize: '64px', marginBottom: '20px' }}>🔍</div>
             <h3 style={{ fontSize: '20px', color: 'var(--text)' }}>
-              لم يتم العثور على مستخدمين
+              No users found
             </h3>
           </div>
         ) : (
@@ -316,22 +317,22 @@ export default function AdminUsers() {
                     borderBottom: '2px solid var(--border)'
                   }}>
                     <th style={{ padding: '16px', textAlign: 'right', fontWeight: '700' }}>
-                      المستخدم
+                      User
                     </th>
                     <th style={{ padding: '16px', textAlign: 'right', fontWeight: '700' }}>
-                      البريد الإلكتروني
+                      Email
                     </th>
                     <th style={{ padding: '16px', textAlign: 'center', fontWeight: '700' }}>
-                      المنشورات
+                      Posts
                     </th>
                     <th style={{ padding: '16px', textAlign: 'center', fontWeight: '700' }}>
-                      تاريخ التسجيل
+                      Registration Date
                     </th>
                     <th style={{ padding: '16px', textAlign: 'center', fontWeight: '700' }}>
-                      الحالة
+                      Status
                     </th>
                     <th style={{ padding: '16px', textAlign: 'center', fontWeight: '700' }}>
-                      الإجراءات
+                      Actions
                     </th>
                   </tr>
                 </thead>
@@ -418,7 +419,7 @@ export default function AdminUsers() {
                                 display: 'inline-block',
                                 marginBottom: '4px'
                               }}>
-                                🚫 محظور {banInfo?.ban_type === 'permanent' ? 'دائماً' : 'مؤقتاً'}
+                                🚫 Banned {banInfo?.ban_type === 'permanent' ? 'Permanently' : 'Temporarily'}
                               </span>
                               {banInfo && (
                                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
@@ -435,7 +436,7 @@ export default function AdminUsers() {
                               fontSize: '12px',
                               fontWeight: '600'
                             }}>
-                              ✅ نشط
+                              ✅ Active
                             </span>
                           )}
                         </td>
@@ -461,7 +462,7 @@ export default function AdminUsers() {
                                   whiteSpace: 'nowrap'
                                 }}
                               >
-                                ✅ إلغاء الحظر
+                                ✅ Unban
                               </button>
                             ) : (
                               <button
@@ -478,7 +479,7 @@ export default function AdminUsers() {
                                   whiteSpace: 'nowrap'
                                 }}
                               >
-                                🚫 حظر
+                                🚫 Ban
                               </button>
                             )}
 
@@ -497,7 +498,7 @@ export default function AdminUsers() {
                                   whiteSpace: 'nowrap'
                                 }}
                               >
-                                🗑️ حذف
+                                🗑️ Delete
                               </button>
                             )}
                           </div>

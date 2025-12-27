@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../services/supabase";
 
 export function useAuth() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(undefined); // undefined = loading, null = not logged in
 
   useEffect(() => {
     async function load() {

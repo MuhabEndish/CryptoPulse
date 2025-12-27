@@ -22,7 +22,21 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [adminData, setAdminData] = useState<AdminData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem("darkMode");
+    return saved ? JSON.parse(saved) : true;
+  });
   const navigate = useNavigate();
+
+  // Apply dark mode to document
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem("darkMode", JSON.stringify(darkMode));
+  }, [darkMode]);
 
   useEffect(() => {
     async function init() {
@@ -89,7 +103,7 @@ export default function AdminDashboard() {
           <span style={{ fontSize: '32px' }}>👨‍💼</span>
           <div>
             <h1 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>
-              لوحة التحكم الإدارية
+              Admin Dashboard
             </h1>
             <p style={{
               fontSize: '13px',
@@ -108,6 +122,21 @@ export default function AdminDashboard() {
         </div>
 
         <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            style={{
+              padding: '10px 20px',
+              background: 'var(--bg)',
+              border: '2px solid var(--border)',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '20px',
+              transition: 'all 0.2s'
+            }}
+            title={darkMode ? "وضع النهار" : "الوضع الليلي"}
+          >
+            {darkMode ? "☀️" : "🌙"}
+          </button>
           <button
             onClick={() => navigate('/')}
             style={{
@@ -154,34 +183,34 @@ export default function AdminDashboard() {
         }}>
           <StatCard
             icon="👥"
-            title="إجمالي المستخدمين"
+            title="Total Users"
             value={stats?.total_users || 0}
             color="#667eea"
-            subtitle={`${stats?.new_users_24h || 0} جديد خلال 24 ساعة`}
+            subtitle={`${stats?.new_users_24h || 0} new in 24h`}
           />
           <StatCard
             icon="📝"
-            title="إجمالي المنشورات"
+            title="Total Posts"
             value={stats?.total_posts || 0}
             color="#06b6d4"
-            subtitle={`${stats?.posts_last_24h || 0} جديد خلال 24 ساعة`}
+            subtitle={`${stats?.posts_last_24h || 0} new in 24h`}
           />
           <StatCard
             icon="💬"
-            title="إجمالي التعليقات"
+            title="Total Comments"
             value={stats?.total_comments || 0}
             color="#10b981"
           />
           <StatCard
             icon="🚨"
-            title="البلاغات المعلقة"
+            title="Pending Reports"
             value={stats?.pending_reports || 0}
             color="#f59e0b"
             alert={stats?.pending_reports ? stats.pending_reports > 0 : false}
           />
           <StatCard
             icon="🚫"
-            title="المستخدمون المحظورون"
+            title="Banned Users"
             value={stats?.banned_users || 0}
             color="#ef4444"
           />
@@ -195,7 +224,7 @@ export default function AdminDashboard() {
             marginBottom: '20px',
             color: 'var(--text)'
           }}>
-            الإجراءات السريعة
+            Quick Actions
           </h2>
 
           <div style={{
@@ -205,28 +234,28 @@ export default function AdminDashboard() {
           }}>
             <ActionCard
               icon="🚨"
-              title="إدارة البلاغات"
-              description="عرض والرد على البلاغات المقدمة من المستخدمين"
+              title="Manage Reports"
+              description="View and respond to user reports"
               onClick={() => navigate('/admin/reports')}
               badge={stats?.pending_reports}
             />
             <ActionCard
               icon="📝"
-              title="إدارة المنشورات"
-              description="عرض وحذف المنشورات غير اللائقة"
+              title="Manage Posts"
+              description="View and delete inappropriate posts"
               onClick={() => navigate('/admin/posts')}
             />
             <ActionCard
               icon="👥"
-              title="إدارة المستخدمين"
-              description="حظر، إلغاء الحظر، أو حذف المستخدمين"
+              title="Manage Users"
+              description="Ban, unban, or delete users"
               onClick={() => navigate('/admin/users')}
             />
             {adminData?.role === 'super_admin' && (
               <ActionCard
                 icon="�‍💼"
-                title="إدارة المديرين"
-                description="إضافة وتعديل وحذف المديرين والمشرفين"
+                title="Manage Admins"
+                description="Add, edit, and delete admins and moderators"
                 onClick={() => navigate('/admin/management')}
               />
             )}
@@ -243,10 +272,10 @@ export default function AdminDashboard() {
         }}>
           <div style={{ fontSize: '48px', marginBottom: '10px' }}>🎉</div>
           <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '10px' }}>
-            مرحباً في لوحة التحكم!
+            Welcome to the Dashboard!
           </h3>
           <p style={{ fontSize: '15px', opacity: 0.9 }}>
-            يمكنك إدارة جميع جوانب المنصة من هنا. ابدأ باختيار إحدى الإجراءات أعلاه.
+            You can manage all aspects of the platform from here. Start by choosing one of the actions above.
           </p>
         </div>
       </main>

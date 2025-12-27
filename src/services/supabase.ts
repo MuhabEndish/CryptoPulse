@@ -6,32 +6,31 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // ===================================================
-// 🖼️ دوال رفع الصور - Image Upload Functions
+// 🖼️ Image Upload Functions
 // ===================================================
 
 /**
- * رفع صورة منشور إلى Supabase Storage
  * Upload post image to Supabase Storage
  */
 export async function uploadPostImage(file: File, userId: string): Promise<string | null> {
   try {
-    // التحقق من نوع الملف
+    // Verify file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-      throw new Error('نوع الملف غير مسموح. استخدم JPEG, PNG, GIF, أو WebP فقط.');
+      throw new Error('File type not allowed. Use only JPEG, PNG, GIF, or WebP.');
     }
 
-    // التحقق من حجم الملف (5 MB)
+    // Verify file size (5 MB)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      throw new Error('حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت.');
+      throw new Error('Image size is too large. Maximum is 5 megabytes.');
     }
 
-    // إنشاء اسم ملف فريد
+    // Create unique filename
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}/${Date.now()}.${fileExt}`;
 
-    // رفع الملف إلى Supabase Storage
+    // Upload file to Supabase Storage
     const { data, error } = await supabase.storage
       .from('posts-images')
       .upload(fileName, file, {
@@ -41,7 +40,7 @@ export async function uploadPostImage(file: File, userId: string): Promise<strin
 
     if (error) throw error;
 
-    // الحصول على الرابط العام للصورة
+    // Get public URL for the image
     const { data: publicUrlData } = supabase.storage
       .from('posts-images')
       .getPublicUrl(fileName);
@@ -54,38 +53,37 @@ export async function uploadPostImage(file: File, userId: string): Promise<strin
 }
 
 /**
- * رفع صورة الملف الشخصي إلى Supabase Storage
  * Upload avatar image to Supabase Storage
  */
 export async function uploadAvatar(file: File, userId: string): Promise<string | null> {
   try {
-    // التحقق من نوع الملف
+    // Verify file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-      throw new Error('نوع الملف غير مسموح. استخدم JPEG, PNG, أو WebP فقط.');
+      throw new Error('File type not allowed. Use only JPEG, PNG, or WebP.');
     }
 
-    // التحقق من حجم الملف (2 MB)
+    // Verify file size (2 MB)
     const maxSize = 2 * 1024 * 1024; // 2MB
     if (file.size > maxSize) {
-      throw new Error('حجم الصورة كبير جداً. الحد الأقصى 2 ميجابايت.');
+      throw new Error('Image size is too large. Maximum is 2 megabytes.');
     }
 
-    // إنشاء اسم ملف فريد
+    // Create unique filename
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}/avatar_${Date.now()}.${fileExt}`;
 
-    // رفع الملف إلى Supabase Storage
+    // Upload file to Supabase Storage
     const { data, error } = await supabase.storage
       .from('avatars')
       .upload(fileName, file, {
         cacheControl: '3600',
-        upsert: true // السماح بالاستبدال
+        upsert: true // Allow replacement
       });
 
     if (error) throw error;
 
-    // الحصول على الرابط العام للصورة
+    // Get public URL for the image
     const { data: publicUrlData } = supabase.storage
       .from('avatars')
       .getPublicUrl(fileName);
@@ -98,12 +96,11 @@ export async function uploadAvatar(file: File, userId: string): Promise<string |
 }
 
 /**
- * حذف صورة من Storage
  * Delete image from Storage
  */
 export async function deleteImage(imageUrl: string, bucket: 'posts-images' | 'avatars'): Promise<boolean> {
   try {
-    // استخراج اسم الملف من الرابط
+    // Extract filename from URL
     const urlParts = imageUrl.split('/');
     const fileName = urlParts.slice(urlParts.indexOf(bucket) + 1).join('/');
 
@@ -121,7 +118,7 @@ export async function deleteImage(imageUrl: string, bucket: 'posts-images' | 'av
 }
 
 // ===================================================
-// 🚨 دوال الإبلاغ عن المحتوى - Content Reporting Functions
+// 🚨 Content Reporting Functions
 // ===================================================
 
 export type ReportReason =
@@ -142,7 +139,6 @@ export interface ReportData {
 }
 
 /**
- * إرسال بلاغ عن محتوى غير لائق
  * Submit a report about inappropriate content
  */
 export async function submitReport(reportData: ReportData, userId: string): Promise<{ success: boolean; error?: string }> {
@@ -160,11 +156,11 @@ export async function submitReport(reportData: ReportData, userId: string): Prom
       });
 
     if (error) {
-      // التحقق من خطأ التكرار (المستخدم أبلغ عن نفس المحتوى من قبل)
+      // Check for duplicate error (user already reported the same content)
       if (error.code === '23505') {
         return {
           success: false,
-          error: 'لقد قمت بالإبلاغ عن هذا المحتوى من قبل.'
+          error: 'You have already reported this content.'
         };
       }
       throw error;
@@ -175,27 +171,26 @@ export async function submitReport(reportData: ReportData, userId: string): Prom
     console.error('Error submitting report:', error);
     return {
       success: false,
-      error: error.message || 'فشل إرسال البلاغ. حاول مرة أخرى.'
+      error: error.message || 'Failed to submit report. Please try again.'
     };
   }
 }
 
 /**
- * جلب أسباب البلاغ المترجمة
  * Get translated report reasons
  */
 export const reportReasons: Record<ReportReason, string> = {
-  spam: '🚫 سبام أو إعلانات مزعجة',
-  harassment: '😡 تحرش أو تنمر',
-  hate_speech: '🤬 خطاب كراهية',
-  violence: '🔪 عنف أو تهديد',
-  inappropriate_content: '🔞 محتوى غير لائق',
-  false_information: '📰 معلومات كاذبة أو مضللة',
-  other: '❓ سبب آخر'
+  spam: '🚫 Spam or annoying ads',
+  harassment: '😡 Harassment or bullying',
+  hate_speech: '🤬 Hate speech',
+  violence: '🔪 Violence or threats',
+  inappropriate_content: '🔞 Inappropriate content',
+  false_information: '📰 False or misleading information',
+  other: '❓ Other reason'
 };
 
 // ===================================================
-// 👨‍💼 دوال لوحة التحكم الإدارية - Admin Dashboard Functions
+// 👨‍💼 Admin Dashboard Functions
 // ===================================================
 
 export interface AdminPermissions {
@@ -218,7 +213,6 @@ export interface AdminData {
 }
 
 /**
- * التحقق من صلاحيات الإداري
  * Check if current user is admin
  */
 export async function checkAdminStatus(): Promise<{ isAdmin: boolean; adminData?: AdminData }> {
@@ -231,7 +225,7 @@ export async function checkAdminStatus(): Promise<{ isAdmin: boolean; adminData?
 
     console.log('🔍 Checking admin status for user:', user.id);
 
-    // استخدام maybeSingle بدلاً من single لتجنب مشاكل RLS
+    // Use maybeSingle instead of single to avoid RLS issues
     const { data, error } = await supabase
       .from('admins')
       .select('*')
@@ -262,7 +256,6 @@ export async function checkAdminStatus(): Promise<{ isAdmin: boolean; adminData?
 }
 
 /**
- * التحقق من حظر المستخدم الحالي
  * Check if current user is banned
  */
 export async function checkIfUserBanned(): Promise<{
@@ -281,7 +274,7 @@ export async function checkIfUserBanned(): Promise<{
       .eq('user_id', user.id)
       .maybeSingle();
 
-    // إذا لم يكن هناك سجل حظر
+    // If there is no ban record
     if (error && error.code !== 'PGRST116') {
       console.error('Error checking ban status:', error);
       return { isBanned: false };
@@ -289,13 +282,13 @@ export async function checkIfUserBanned(): Promise<{
 
     if (!data) return { isBanned: false };
 
-    // التحقق من انتهاء الحظر المؤقت
+    // Check if temporary ban has expired
     if (data.ban_type === 'temporary' && data.banned_until) {
       const bannedUntil = new Date(data.banned_until);
       const now = new Date();
 
       if (bannedUntil < now) {
-        // انتهى الحظر - حذف السجل تلقائياً
+        // Ban expired - delete record automatically
         await supabase
           .from('banned_users')
           .delete()
@@ -318,7 +311,6 @@ export async function checkIfUserBanned(): Promise<{
 }
 
 /**
- * جلب إحصائيات Dashboard
  * Get dashboard statistics
  */
 export async function getDashboardStats() {
@@ -337,12 +329,11 @@ export async function getDashboardStats() {
 }
 
 /**
- * جلب جميع البلاغات للإداريين
  * Get all reports for admins
  */
 export async function getAllReports(status?: string) {
   try {
-    // جلب البلاغات
+    // Fetch reports
     let query = supabase
       .from('reports')
       .select('*')
@@ -355,22 +346,22 @@ export async function getAllReports(status?: string) {
     const { data: reports, error: reportsError } = await query;
     if (reportsError) throw reportsError;
 
-    // جلب معلومات المستخدمين
+    // Fetch user information
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, username, email');
 
     if (profilesError) throw profilesError;
 
-    // دمج البيانات
+    // Merge data
     const reportsWithData = reports?.map(report => {
       const reporter = profiles?.find(p => p.id === report.reporter_id);
       const reportedUser = profiles?.find(p => p.id === report.reported_user_id);
 
       return {
         ...report,
-        reporter: reporter || { id: report.reporter_id, username: 'مستخدم محذوف', email: '' },
-        reported_user: reportedUser || { id: report.reported_user_id, username: 'مستخدم محذوف', email: '' }
+        reporter: reporter || { id: report.reporter_id, username: 'Deleted user', email: '' },
+        reported_user: reportedUser || { id: report.reported_user_id, username: 'Deleted user', email: '' }
       };
     });
 
@@ -382,7 +373,6 @@ export async function getAllReports(status?: string) {
 }
 
 /**
- * تحديث حالة البلاغ
  * Update report status
  */
 export async function updateReportStatus(reportId: string, status: string) {
@@ -394,7 +384,7 @@ export async function updateReportStatus(reportId: string, status: string) {
 
     if (error) throw error;
 
-    // تسجيل الإجراء
+    // Log the action
     await supabase.rpc('log_admin_action', {
       p_action_type: status === 'resolved' ? 'resolve_report' : 'dismiss_report',
       p_target_type: 'report',
@@ -409,7 +399,6 @@ export async function updateReportStatus(reportId: string, status: string) {
 }
 
 /**
- * حذف منشور (للإداريين)
  * Delete post (admin)
  */
 export async function adminDeletePost(postId: string, reason?: string) {
@@ -421,7 +410,7 @@ export async function adminDeletePost(postId: string, reason?: string) {
 
     if (error) throw error;
 
-    // تسجيل الإجراء
+    // Log the action
     await supabase.rpc('log_admin_action', {
       p_action_type: 'delete_post',
       p_target_type: 'post',
@@ -437,7 +426,6 @@ export async function adminDeletePost(postId: string, reason?: string) {
 }
 
 /**
- * حذف تعليق (للإداريين)
  * Delete comment (admin)
  */
 export async function adminDeleteComment(commentId: string, reason?: string) {
@@ -449,7 +437,7 @@ export async function adminDeleteComment(commentId: string, reason?: string) {
 
     if (error) throw error;
 
-    // تسجيل الإجراء
+    // Log the action
     await supabase.rpc('log_admin_action', {
       p_action_type: 'delete_comment',
       p_target_type: 'comment',
@@ -465,12 +453,11 @@ export async function adminDeleteComment(commentId: string, reason?: string) {
 }
 
 /**
- * جلب جميع المنشورات (للإداريين)
  * Get all posts (admin)
  */
 export async function getAllPosts(limit: number = 50) {
   try {
-    // جلب المنشورات
+    // Fetch posts
     const { data: posts, error: postsError } = await supabase
       .from('posts')
       .select('*')
@@ -479,28 +466,28 @@ export async function getAllPosts(limit: number = 50) {
 
     if (postsError) throw postsError;
 
-    // جلب معلومات المستخدمين
+    // Fetch user information
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, username, email, avatar_url');
 
     if (profilesError) throw profilesError;
 
-    // جلب عدد الإعجابات لكل منشور
+    // Fetch like count for each post
     const { data: likes, error: likesError } = await supabase
       .from('likes')
       .select('post_id');
 
     if (likesError) throw likesError;
 
-    // جلب عدد التعليقات لكل منشور
+    // Fetch comment count for each post
     const { data: comments, error: commentsError } = await supabase
       .from('comments')
       .select('post_id');
 
     if (commentsError) throw commentsError;
 
-    // دمج البيانات
+    // Merge data
     const postsWithData = posts?.map(post => {
       const profile = profiles?.find(p => p.id === post.user_id);
       const likeCount = likes?.filter(l => l.post_id === post.id).length || 0;
@@ -508,7 +495,7 @@ export async function getAllPosts(limit: number = 50) {
 
       return {
         ...post,
-        profiles: profile || { id: post.user_id, username: 'مستخدم محذوف', email: '', avatar_url: null },
+        profiles: profile || { id: post.user_id, username: 'Deleted user', email: '', avatar_url: null },
         likes: [{ count: likeCount }],
         comments: [{ count: commentCount }]
       };
@@ -522,12 +509,11 @@ export async function getAllPosts(limit: number = 50) {
 }
 
 /**
- * جلب جميع المستخدمين (للإداريين)
  * Get all users (admin)
  */
 export async function getAllUsers(limit: number = 50) {
   try {
-    // جلب المستخدمين
+    // Fetch users
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('*')
@@ -536,21 +522,21 @@ export async function getAllUsers(limit: number = 50) {
 
     if (profilesError) throw profilesError;
 
-    // جلب معلومات الحظر لكل مستخدم
+    // Fetch ban information for each user
     const { data: bannedUsers, error: bannedError } = await supabase
       .from('banned_users')
       .select('*');
 
     if (bannedError) throw bannedError;
 
-    // جلب عدد المنشورات لكل مستخدم
+    // Fetch post count for each user
     const { data: postCounts, error: postsError } = await supabase
       .from('posts')
       .select('user_id');
 
     if (postsError) throw postsError;
 
-    // دمج البيانات
+    // Merge data
     const usersWithData = profiles?.map(profile => {
       const banned = bannedUsers?.filter(b => b.user_id === profile.id) || [];
       const postCount = postCounts?.filter(p => p.user_id === profile.id).length || 0;
@@ -570,7 +556,6 @@ export async function getAllUsers(limit: number = 50) {
 }
 
 /**
- * حظر مستخدم
  * Ban user
  */
 export async function banUser(
@@ -595,12 +580,12 @@ export async function banUser(
 
     if (error) {
       if (error.code === '23505') {
-        return { success: false, error: 'هذا المستخدم محظور بالفعل' };
+        return { success: false, error: 'This user is already banned' };
       }
       throw error;
     }
 
-    // تسجيل الإجراء
+    // Log the action
     await supabase.rpc('log_admin_action', {
       p_action_type: 'ban_user',
       p_target_type: 'user',
@@ -617,7 +602,6 @@ export async function banUser(
 }
 
 /**
- * إلغاء حظر مستخدم
  * Unban user
  */
 export async function unbanUser(userId: string) {
@@ -629,7 +613,7 @@ export async function unbanUser(userId: string) {
 
     if (error) throw error;
 
-    // تسجيل الإجراء
+    // Log the action
     await supabase.rpc('log_admin_action', {
       p_action_type: 'unban_user',
       p_target_type: 'user',
@@ -644,7 +628,6 @@ export async function unbanUser(userId: string) {
 }
 
 /**
- * حذف مستخدم نهائياً (Super Admin فقط)
  * Permanently delete user (Super Admin only)
  */
 export async function deleteUser(userId: string) {
@@ -656,7 +639,7 @@ export async function deleteUser(userId: string) {
 
     if (error) throw error;
 
-    // تسجيل الإجراء
+    // Log the action
     await supabase.rpc('log_admin_action', {
       p_action_type: 'delete_user',
       p_target_type: 'user',
@@ -671,12 +654,11 @@ export async function deleteUser(userId: string) {
 }
 
 /**
- * جلب سجل الإجراءات الإدارية
  * Get admin actions log
  */
 export async function getAdminActionsLog(limit: number = 100) {
   try {
-    // جلب سجل الإجراءات
+    // Fetch action logs
     const { data: logs, error: logsError } = await supabase
       .from('admin_actions_log')
       .select('*')
@@ -685,21 +667,21 @@ export async function getAdminActionsLog(limit: number = 100) {
 
     if (logsError) throw logsError;
 
-    // جلب معلومات الإداريين
+    // Fetch admin information
     const { data: admins, error: adminsError } = await supabase
       .from('admins')
       .select('user_id, role');
 
     if (adminsError) throw adminsError;
 
-    // جلب معلومات المستخدمين
+    // Fetch user information
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, username, email');
 
     if (profilesError) throw profilesError;
 
-    // دمج البيانات
+    // Merge data
     const logsWithData = logs?.map(log => {
       const admin = admins?.find(a => a.user_id === log.admin_id);
       const profile = profiles?.find(p => p.id === log.admin_id);
@@ -709,7 +691,7 @@ export async function getAdminActionsLog(limit: number = 100) {
         admin: admin ? {
           user_id: admin.user_id,
           role: admin.role,
-          profiles: profile || { username: 'مستخدم محذوف', email: '' }
+          profiles: profile || { username: 'Deleted user', email: '' }
         } : null
       };
     });
@@ -722,11 +704,10 @@ export async function getAdminActionsLog(limit: number = 100) {
 }
 
 // ===================================================
-// 👨‍💼 دوال إدارة المديرين - Admins Management Functions
+// 👨‍💼 Admins Management Functions
 // ===================================================
 
 /**
- * جلب جميع المديرين
  * Get all admins
  */
 export async function getAllAdmins() {
@@ -738,14 +719,14 @@ export async function getAllAdmins() {
 
     if (adminsError) throw adminsError;
 
-    // جلب معلومات المستخدمين
+    // Fetch user information
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, username, email');
 
     if (profilesError) throw profilesError;
 
-    // دمج البيانات
+    // Merge data
     const adminsWithData = admins?.map(admin => {
       const profile = profiles?.find(p => p.id === admin.user_id);
       return {
@@ -762,29 +743,28 @@ export async function getAllAdmins() {
 }
 
 /**
- * إضافة مدير جديد
  * Add new admin
  */
 export async function addAdmin(
-  usernameOrEmail: string,
+  email: string,
   role: 'super_admin' | 'admin' | 'moderator',
   permissions: any
 ) {
   try {
-    // البحث عن المستخدم بالاسم (username)
+    // Search for user by email
     const { data: profiles, error: profileError } = await supabase
       .from('profiles')
       .select('id, username, email')
-      .eq('username', usernameOrEmail)
+      .eq('email', email)
       .maybeSingle();
 
     if (profileError) throw profileError;
 
     if (!profiles) {
-      return { success: false, error: 'المستخدم غير موجود. تأكد من اسم المستخدم (username)' };
+      return { success: false, error: 'User not found. Verify the email address' };
     }
 
-    // التحقق من عدم وجود سجل إداري مسبق
+    // Check that no previous admin record exists
     const { data: existingAdmin } = await supabase
       .from('admins')
       .select('id')
@@ -792,10 +772,10 @@ export async function addAdmin(
       .maybeSingle();
 
     if (existingAdmin) {
-      return { success: false, error: 'هذا المستخدم مدير بالفعل' };
+      return { success: false, error: 'This user is already an admin' };
     }
 
-    // إضافة المدير الجديد
+    // Add new admin
     const { error: insertError } = await supabase
       .from('admins')
       .insert({
@@ -806,7 +786,7 @@ export async function addAdmin(
 
     if (insertError) throw insertError;
 
-    // تسجيل الإجراء
+    // Log the action
     await supabase.rpc('log_admin_action', {
       p_action_type: 'create_admin',
       p_target_type: 'admin',
@@ -822,7 +802,6 @@ export async function addAdmin(
 }
 
 /**
- * تحديث صلاحيات مدير
  * Update admin permissions
  */
 export async function updateAdminPermissions(
@@ -846,7 +825,6 @@ export async function updateAdminPermissions(
 }
 
 /**
- * حذف مدير
  * Delete admin
  */
 export async function deleteAdmin(adminUserId: string) {
@@ -858,7 +836,7 @@ export async function deleteAdmin(adminUserId: string) {
 
     if (error) throw error;
 
-    // تسجيل الإجراء
+    // Log the action
     await supabase.rpc('log_admin_action', {
       p_action_type: 'delete_admin',
       p_target_type: 'admin',

@@ -1,50 +1,50 @@
 // ===================================================
 // 🚫 Content Moderation Utility
-// 🚫 أداة مراقبة المحتوى وفلترة الكلمات غير اللائقة
+// 🚫 Content monitoring and inappropriate word filtering tool
 // ===================================================
 
-// قائمة الكلمات المحظورة بالعربية
+// List of banned words in Arabic
 const arabicBadWords = [
-  // كلمات مسيئة شائعة بالعربية
+  // Common offensive words in Arabic
   "كلب", "حمار", "غبي", "احمق", "أحمق", "وسخ",
   "قذر", "حقير", "خنزير", "لعين", "ملعون",
-  // إضافة المزيد حسب الحاجة
+  // Add more as needed
 ];
 
-// قائمة الكلمات المحظورة بالإنجليزية
+// List of banned words in English
 const englishBadWords = [
   "fuck", "shit", "bitch", "ass", "damn", "hell",
   "bastard", "stupid", "idiot", "moron", "dumb",
   "crap", "piss", "dick", "cock", "pussy",
-  // إضافة المزيد حسب الحاجة
+  // Add more as needed
 ];
 
-// دمج القوائم
+// Merge lists
 const allBadWords = [...arabicBadWords, ...englishBadWords];
 
 /**
- * التحقق من وجود كلمات غير لائقة في النص
- * @param text النص المراد فحصه
- * @returns true إذا كان النص يحتوي على كلمات محظورة
+ * Check for inappropriate words in text
+ * @param text The text to check
+ * @returns true if text contains banned words
  */
 export function containsProfanity(text: string): boolean {
   if (!text) return false;
 
-  // تحويل النص إلى أحرف صغيرة للمقارنة
+  // Convert text to lowercase for comparison
   const lowerText = text.toLowerCase();
 
-  // البحث عن أي كلمة محظورة
+  // Search for any banned word
   return allBadWords.some((badWord) => {
-    // البحث عن الكلمة كاملة أو كجزء من كلمة أكبر
+    // Search for the word as a whole or as part of a larger word
     const regex = new RegExp(`\\b${badWord}\\b|${badWord}`, "gi");
     return regex.test(lowerText);
   });
 }
 
 /**
- * العثور على الكلمات المحظورة في النص
- * @param text النص المراد فحصه
- * @returns مصفوفة بالكلمات المحظورة الموجودة
+ * Find banned words in text
+ * @param text The text to check
+ * @returns Array of banned words found
  */
 export function findProfanity(text: string): string[] {
   if (!text) return [];
@@ -63,9 +63,9 @@ export function findProfanity(text: string): string[] {
 }
 
 /**
- * استبدال الكلمات غير اللائقة بنجوم
- * @param text النص المراد تنظيفه
- * @returns النص بعد استبدال الكلمات المحظورة
+ * Replace inappropriate words with asterisks
+ * @param text The text to clean
+ * @returns Text after replacing banned words
  */
 export function censorText(text: string): string {
   if (!text) return "";
@@ -82,21 +82,21 @@ export function censorText(text: string): string {
 }
 
 /**
- * التحقق من اسم ملف الصورة
- * @param filename اسم الملف
- * @returns true إذا كان اسم الملف يحتوي على كلمات محظورة
+ * Check image filename
+ * @param filename The filename
+ * @returns true if filename contains banned words
  */
 export function isInappropriateFilename(filename: string): boolean {
   if (!filename) return false;
 
-  // إزالة الامتداد
+  // Remove extension
   const nameWithoutExt = filename.replace(/\.[^/.]+$/, "");
 
   return containsProfanity(nameWithoutExt);
 }
 
 /**
- * قائمة بالكلمات المشبوهة التي قد تشير إلى محتوى غير لائق
+ * List of suspicious keywords that may indicate inappropriate content
  */
 const suspiciousKeywords = [
   "nude", "naked", "sex", "porn", "xxx", "adult",
@@ -104,9 +104,9 @@ const suspiciousKeywords = [
 ];
 
 /**
- * التحقق من وجود كلمات مشبوهة في اسم الملف
- * @param filename اسم الملف
- * @returns true إذا كان اسم الملف يحتوي على كلمات مشبوهة
+ * Check for suspicious keywords in filename
+ * @param filename The filename
+ * @returns true if filename contains suspicious keywords
  */
 export function containsSuspiciousContent(filename: string): boolean {
   if (!filename) return false;
@@ -119,10 +119,10 @@ export function containsSuspiciousContent(filename: string): boolean {
 }
 
 /**
- * التحقق الشامل من المحتوى
- * @param text النص المراد فحصه
- * @param filename اسم الملف (اختياري)
- * @returns كائن يحتوي على نتيجة الفحص
+ * Comprehensive content check
+ * @param text The text to check
+ * @param filename The filename (optional)
+ * @returns Object containing check result
  */
 export function moderateContent(
   text: string,
@@ -132,29 +132,29 @@ export function moderateContent(
   reason?: string;
   foundWords?: string[];
 } {
-  // فحص النص
+  // Check text
   if (containsProfanity(text)) {
     const foundWords = findProfanity(text);
     return {
       isClean: false,
-      reason: "يحتوي النص على كلمات غير لائقة",
+      reason: "Text contains inappropriate words",
       foundWords,
     };
   }
 
-  // فحص اسم الملف إذا تم تقديمه
+  // Check filename if provided
   if (filename) {
     if (isInappropriateFilename(filename)) {
       return {
         isClean: false,
-        reason: "اسم الملف يحتوي على كلمات غير لائقة",
+        reason: "Filename contains inappropriate words",
       };
     }
 
     if (containsSuspiciousContent(filename)) {
       return {
         isClean: false,
-        reason: "اسم الملف يحتوي على كلمات مشبوهة",
+        reason: "Filename contains suspicious words",
       };
     }
   }
@@ -163,13 +163,13 @@ export function moderateContent(
 }
 
 /**
- * رسالة الخطأ للمستخدم عند رفض المحتوى
+ * Error message for user when content is rejected
  */
 export const INAPPROPRIATE_CONTENT_MESSAGE =
-  "⚠️ تم رفض المحتوى! يحتوي على كلمات أو محتوى غير لائق. الرجاء احترام المجتمع والالتزام بالأخلاق.";
+  "⚠️ Content rejected! It contains inappropriate words or content. Please respect the community and maintain ethics.";
 
 /**
- * رسالة تحذيرية
+ * Warning message
  */
 export const WARNING_MESSAGE =
-  "⚠️ تحذير: المحتوى غير اللائق قد يؤدي إلى حظر الحساب.";
+  "⚠️ Warning: Inappropriate content may result in account suspension.";
