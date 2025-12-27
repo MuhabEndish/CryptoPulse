@@ -19,7 +19,7 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      // تسجيل الدخول
+      // Sign in
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password,
@@ -30,34 +30,34 @@ export default function AdminLogin() {
       }
 
       if (!authData.user) {
-        throw new Error('فشل تسجيل الدخول');
+        throw new Error('Login failed');
       }
 
-      // التحقق من الصلاحيات الإدارية
+      // Verify admin permissions
       const { isAdmin, adminData } = await checkAdminStatus();
 
       if (!isAdmin) {
-        // ليس إدارياً - تسجيل الخروج
+        // Not an admin - sign out
         await supabase.auth.signOut();
-        setError('⛔ ليس لديك صلاحيات إدارية للوصول إلى هذه الصفحة');
+        setError('⛔ You do not have admin permissions to access this page');
         setLoading(false);
         return;
       }
 
-      // تحديث آخر تسجيل دخول
+      // Update last login
       await supabase
         .from('admins')
         .update({ last_login: new Date().toISOString() })
         .eq('user_id', authData.user.id);
 
-      // نجح تسجيل الدخول - الانتقال إلى لوحة التحكم
+      // Login successful - navigate to dashboard
       console.log('✅ Admin logged in:', adminData?.role);
       navigate('/admin/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.message === 'Invalid login credentials'
-        ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
-        : err.message || 'حدث خطأ أثناء تسجيل الدخول');
+        ? 'Email or password is incorrect'
+        : err.message || 'An error occurred during login');
     } finally {
       setLoading(false);
     }
@@ -76,14 +76,14 @@ export default function AdminLogin() {
 
       if (error) throw error;
 
-      setResetMessage('✅ تم إرسال رابط استعادة كلمة المرور إلى بريدك الإلكتروني');
+      setResetMessage('✅ Password reset link has been sent to your email');
       setResetEmail('');
       setTimeout(() => {
         setShowForgotPassword(false);
         setResetMessage('');
       }, 3000);
     } catch (err: any) {
-      setError(err.message || 'حدث خطأ أثناء إرسال البريد');
+      setError(err.message || 'An error occurred while sending the email');
     } finally {
       setLoading(false);
     }
@@ -120,15 +120,15 @@ export default function AdminLogin() {
             marginBottom: '8px',
             color: 'var(--text)'
           }}>
-            {showForgotPassword ? 'استعادة كلمة المرور' : 'تسجيل دخول الإدارة'}
+            {showForgotPassword ? 'Password Recovery' : 'Admin Login'}
           </h1>
           <p style={{
             color: 'var(--text-secondary)',
             fontSize: '15px'
           }}>
             {showForgotPassword
-              ? 'أدخل بريدك الإلكتروني لاستعادة كلمة المرور'
-              : 'لوحة التحكم الإدارية'}
+              ? 'Enter your email to recover your password'
+              : 'Admin Dashboard'}
           </p>
         </div>
 
@@ -175,7 +175,7 @@ export default function AdminLogin() {
                 color: 'var(--text)',
                 fontSize: '14px'
               }}>
-                البريد الإلكتروني
+                Email
               </label>
               <input
                 type="email"
@@ -207,7 +207,7 @@ export default function AdminLogin() {
                 color: 'var(--text)',
                 fontSize: '14px'
               }}>
-                كلمة المرور
+                Password
               </label>
               <input
                 type="password"
@@ -244,7 +244,7 @@ export default function AdminLogin() {
                 padding: 0
               }}
             >
-              نسيت كلمة المرور؟
+              Forgot password?
             </button>
 
             <button
@@ -280,12 +280,12 @@ export default function AdminLogin() {
               {loading ? (
                 <>
                   <LoadingSpinner />
-                  <span>جاري تسجيل الدخول...</span>
+                  <span>Signing in...</span>
                 </>
               ) : (
                 <>
                   <span>🔓</span>
-                  <span>تسجيل الدخول</span>
+                  <span>Sign In</span>
                 </>
               )}
             </button>
@@ -301,7 +301,7 @@ export default function AdminLogin() {
                 color: 'var(--text)',
                 fontSize: '14px'
               }}>
-                البريد الإلكتروني
+                Email
               </label>
               <input
                 type="email"
@@ -346,7 +346,7 @@ export default function AdminLogin() {
                   transition: 'all 0.2s'
                 }}
               >
-                رجوع
+                Back
               </button>
 
               <button
@@ -372,12 +372,12 @@ export default function AdminLogin() {
                 {loading ? (
                   <>
                     <LoadingSpinner />
-                    <span>إرسال...</span>
+                    <span>Sending...</span>
                   </>
                 ) : (
                   <>
                     <span>📧</span>
-                    <span>إرسال</span>
+                    <span>Send</span>
                   </>
                 )}
               </button>
@@ -408,7 +408,7 @@ export default function AdminLogin() {
             }}
           >
             <span>←</span>
-            <span>العودة إلى الصفحة الرئيسية</span>
+            <span>Back to Home</span>
           </button>
         </div>
       </div>

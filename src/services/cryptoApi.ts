@@ -45,3 +45,16 @@ export async function searchCryptos(query: string) {
     return [];
   }
 }
+
+export async function fetchFearAndGreedIndex() {
+  try {
+    const { data } = await axios.get("https://api.alternative.me/fng/");
+    return {
+      value: parseInt(data.data[0].value),
+      classification: data.data[0].value_classification,
+    };
+  } catch (error) {
+    console.error("Error fetching Fear and Greed Index:", error);
+    return null;
+  }
+}

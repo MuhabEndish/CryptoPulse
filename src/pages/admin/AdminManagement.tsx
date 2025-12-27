@@ -8,6 +8,7 @@ import {
   deleteAdmin
 } from '../../services/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import AdminHeader from '../../components/AdminHeader';
 
 interface Admin {
   id: string;
@@ -68,7 +69,7 @@ export default function AdminManagement() {
   const navigate = useNavigate();
 
   // Form states
-  const [newAdminUsername, setNewAdminUsername] = useState('');
+  const [newAdminEmail, setNewAdminEmail] = useState('');
   const [selectedRole, setSelectedRole] = useState<'admin' | 'moderator'>('moderator');
   const [customPermissions, setCustomPermissions] = useState(DEFAULT_PERMISSIONS.moderator);
 
@@ -76,7 +77,7 @@ export default function AdminManagement() {
     async function init() {
       const { isAdmin, adminData } = await checkAdminStatus();
       if (!isAdmin || adminData?.role !== 'super_admin') {
-        alert('❌ هذه الصفحة متاحة فقط للمدير العام');
+        alert('❌ This page is only available to Super Admins');
         navigate('/admin/dashboard');
         return;
       }
@@ -96,8 +97,8 @@ export default function AdminManagement() {
   }
 
   async function handleAddAdmin() {
-    if (!newAdminUsername.trim()) {
-      alert('❌ الرجاء إدخال اسم المستخدم (username)');
+    if (!newAdminEmail.trim()) {
+      alert('❌ Please enter the email address');
       return;
     }
 
@@ -105,12 +106,12 @@ export default function AdminManagement() {
       ? DEFAULT_PERMISSIONS.admin
       : customPermissions;
 
-    const result = await addAdmin(newAdminUsername, selectedRole, permissions);
+    const result = await addAdmin(newAdminEmail, selectedRole, permissions);
 
     if (result.success) {
-      alert('✅ تم إضافة المدير بنجاح');
+      alert('✅ Admin added successfully');
       setShowAddModal(false);
-      setNewAdminUsername('');
+      setNewAdminEmail('');
       setSelectedRole('moderator');
       setCustomPermissions(DEFAULT_PERMISSIONS.moderator);
       loadAdmins();
@@ -127,7 +128,7 @@ export default function AdminManagement() {
     );
 
     if (result.success) {
-      alert('✅ تم تحديث الصلاحيات بنجاح');
+      alert('✅ Permissions updated successfully');
       setSelectedAdmin(null);
       loadAdmins();
     } else {
@@ -136,12 +137,12 @@ export default function AdminManagement() {
   }
 
   async function handleDeleteAdmin(adminUserId: string, username: string) {
-    if (!confirm(`هل تريد حذف المدير "${username}"؟`)) return;
+    if (!confirm(`Do you want to delete admin "${username}"?`)) return;
 
     const result = await deleteAdmin(adminUserId);
 
     if (result.success) {
-      alert('✅ تم حذف المدير بنجاح');
+      alert('✅ Admin deleted successfully');
       loadAdmins();
     } else {
       alert(`❌ ${result.error}`);
@@ -159,9 +160,9 @@ export default function AdminManagement() {
 
   function getRoleText(role: string) {
     switch(role) {
-      case 'super_admin': return 'مدير عام';
-      case 'admin': return 'مدير';
-      case 'moderator': return 'مشرف';
+      case 'super_admin': return 'Super Admin';
+      case 'admin': return 'Admin';
+      case 'moderator': return 'Moderator';
       default: return role;
     }
   }
@@ -176,72 +177,51 @@ export default function AdminManagement() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      {/* Header */}
-      <header style={{
-        background: 'var(--card)',
-        borderBottom: '1px solid var(--border)',
-        padding: '20px 40px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <div>
+      <AdminHeader title="Admin Management" adminRole="super_admin" />
+
+      <main style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+          <div>
+            <p style={{ opacity: 0.7, margin: 0 }}>Add, edit, and delete admins and moderators</p>
+          </div>
           <button
-            onClick={() => navigate('/admin/dashboard')}
+            onClick={() => setShowAddModal(true)}
             style={{
-              padding: '8px 16px',
-              background: 'transparent',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
+              padding: '12px 24px',
+              background: 'var(--accent)',
+              borderRadius: '10px',
               color: 'white',
+              fontWeight: 'bold',
               cursor: 'pointer',
-              marginBottom: '10px'
+              border: 'none'
             }}
           >
-            ← العودة للوحة التحكم
+            ➕ Add New Admin
           </button>
-          <h1 style={{ fontSize: '28px', marginBottom: '5px' }}>👨‍💼 إدارة المديرين</h1>
-          <p style={{ opacity: 0.7 }}>إضافة وتعديل وحذف المديرين والمشرفين</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          style={{
-            padding: '12px 24px',
-            background: 'var(--accent)',
-            borderRadius: '10px',
-            color: 'white',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            border: 'none'
-          }}
-        >
-          ➕ إضافة مدير جديد
-        </button>
-      </header>
 
-      {/* Stats */}
-      <div style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto' }}>
+        {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
           <div style={{ background: 'var(--card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '14px', opacity: 0.7, marginBottom: '8px' }}>إجمالي المديرين</div>
+            <div style={{ fontSize: '14px', opacity: 0.7, marginBottom: '8px' }}>Total Admins</div>
             <div style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--accent)' }}>
               {admins.length}
             </div>
           </div>
           <div style={{ background: 'var(--card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '14px', opacity: 0.7, marginBottom: '8px' }}>مديرون عامون</div>
+            <div style={{ fontSize: '14px', opacity: 0.7, marginBottom: '8px' }}>Super Admins</div>
             <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#10b981' }}>
               {admins.filter(a => a.role === 'super_admin').length}
             </div>
           </div>
           <div style={{ background: 'var(--card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '14px', opacity: 0.7, marginBottom: '8px' }}>مديرون</div>
+            <div style={{ fontSize: '14px', opacity: 0.7, marginBottom: '8px' }}>Admins</div>
             <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#3b82f6' }}>
               {admins.filter(a => a.role === 'admin').length}
             </div>
           </div>
           <div style={{ background: 'var(--card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '14px', opacity: 0.7, marginBottom: '8px' }}>مشرفون</div>
+            <div style={{ fontSize: '14px', opacity: 0.7, marginBottom: '8px' }}>Moderators</div>
             <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#f59e0b' }}>
               {admins.filter(a => a.role === 'moderator').length}
             </div>
@@ -253,11 +233,11 @@ export default function AdminManagement() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'rgba(139, 92, 246, 0.1)', borderBottom: '1px solid var(--border)' }}>
-                <th style={{ padding: '16px', textAlign: 'right' }}>المدير</th>
-                <th style={{ padding: '16px', textAlign: 'right' }}>الدور</th>
-                <th style={{ padding: '16px', textAlign: 'right' }}>الصلاحيات</th>
-                <th style={{ padding: '16px', textAlign: 'right' }}>تاريخ الإضافة</th>
-                <th style={{ padding: '16px', textAlign: 'center' }}>الإجراءات</th>
+                <th style={{ padding: '16px', textAlign: 'right' }}>Admin</th>
+                <th style={{ padding: '16px', textAlign: 'right' }}>Role</th>
+                <th style={{ padding: '16px', textAlign: 'right' }}>Permissions</th>
+                <th style={{ padding: '16px', textAlign: 'right' }}>Date Added</th>
+                <th style={{ padding: '16px', textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -281,12 +261,12 @@ export default function AdminManagement() {
                   </td>
                   <td style={{ padding: '16px' }}>
                     <div style={{ fontSize: '14px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                      {admin.permissions.view_reports && <span style={{ background: '#374151', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>عرض البلاغات</span>}
-                      {admin.permissions.manage_reports && <span style={{ background: '#374151', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>إدارة البلاغات</span>}
-                      {admin.permissions.delete_posts && <span style={{ background: '#374151', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>حذف المنشورات</span>}
-                      {admin.permissions.ban_users && <span style={{ background: '#374151', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>حظر المستخدمين</span>}
-                      {admin.permissions.delete_users && <span style={{ background: '#374151', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>حذف المستخدمين</span>}
-                      {admin.permissions.manage_admins && <span style={{ background: '#374151', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>إدارة المديرين</span>}
+                      {admin.permissions.view_reports && <span style={{ background: '#374151', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>View Reports</span>}
+                      {admin.permissions.manage_reports && <span style={{ background: '#374151', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>Manage Reports</span>}
+                      {admin.permissions.delete_posts && <span style={{ background: '#374151', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>Delete Posts</span>}
+                      {admin.permissions.ban_users && <span style={{ background: '#374151', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>Ban Users</span>}
+                      {admin.permissions.delete_users && <span style={{ background: '#374151', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>Delete Users</span>}
+                      {admin.permissions.manage_admins && <span style={{ background: '#374151', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>Manage Admins</span>}
                     </div>
                   </td>
                   <td style={{ padding: '16px', fontSize: '14px', opacity: 0.7 }}>
@@ -306,7 +286,7 @@ export default function AdminManagement() {
                           fontSize: '14px'
                         }}
                       >
-                        🗑️ حذف
+                        🗑️ Delete
                       </button>
                     )}
                   </td>
@@ -315,7 +295,7 @@ export default function AdminManagement() {
             </tbody>
           </table>
         </div>
-      </div>
+      </main>
 
       {/* Add Admin Modal */}
       {showAddModal && (
@@ -340,17 +320,17 @@ export default function AdminManagement() {
             maxHeight: '90vh',
             overflow: 'auto'
           }}>
-            <h2 style={{ marginBottom: '20px' }}>➕ إضافة مدير جديد</h2>
+            <h2 style={{ marginBottom: '20px' }}>➕ Add New Admin</h2>
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                اسم المستخدم (Username)
+                Email Address
               </label>
               <input
-                type="text"
-                value={newAdminUsername}
-                onChange={(e) => setNewAdminUsername(e.target.value)}
-                placeholder="اكتب اسم المستخدم هنا"
+                type="email"
+                value={newAdminEmail}
+                onChange={(e) => setNewAdminEmail(e.target.value)}
+                placeholder="example@email.com"
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -361,13 +341,13 @@ export default function AdminManagement() {
                 }}
               />
               <div style={{ fontSize: '12px', opacity: 0.6, marginTop: '6px' }}>
-                💡 اكتب اسم المستخدم (username) وليس البريد الإلكتروني
+                💡 Enter the email address of the user you want to add as admin
               </div>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                الدور
+                Role
               </label>
               <select
                 value={selectedRole}
@@ -385,14 +365,14 @@ export default function AdminManagement() {
                   color: 'white'
                 }}
               >
-                <option value="moderator">مشرف (Moderator)</option>
-                <option value="admin">مدير (Admin)</option>
+                <option value="moderator">Moderator</option>
+                <option value="admin">Admin</option>
               </select>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '12px', fontWeight: 'bold' }}>
-                الصلاحيات
+                Permissions
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {Object.entries(customPermissions).map(([key, value]) => (
@@ -424,7 +404,7 @@ export default function AdminManagement() {
                   cursor: 'pointer'
                 }}
               >
-                إلغاء
+                Cancel
               </button>
               <button
                 onClick={handleAddAdmin}
@@ -438,7 +418,7 @@ export default function AdminManagement() {
                   cursor: 'pointer'
                 }}
               >
-                إضافة
+                Add
               </button>
             </div>
           </div>

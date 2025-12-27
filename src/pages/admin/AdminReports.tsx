@@ -10,6 +10,7 @@ import {
   supabase
 } from '../../services/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import AdminHeader from '../../components/AdminHeader';
 
 interface Report {
   id: string;
@@ -64,33 +65,33 @@ export default function AdminReports() {
   }
 
   async function handleResolve(reportId: string) {
-    if (!confirm('هل تريد تحديد هذا البلاغ كـ "تم الحل"؟')) return;
+    if (!confirm('Do you want to mark this report as "Resolved"?')) return;
 
     const result = await updateReportStatus(reportId, 'resolved');
     if (result.success) {
-      alert('✅ تم تحديث حالة البلاغ');
+      alert('✅ Report status updated');
       loadReports();
     } else {
-      alert('❌ حدث خطأ');
+      alert('❌ An error occurred');
     }
   }
 
   async function handleDismiss(reportId: string) {
-    if (!confirm('هل تريد رفض هذا البلاغ؟')) return;
+    if (!confirm('Do you want to dismiss this report?')) return;
 
     const result = await updateReportStatus(reportId, 'dismissed');
     if (result.success) {
-      alert('✅ تم رفض البلاغ');
+      alert('✅ Report dismissed');
       loadReports();
     } else {
-      alert('❌ حدث خطأ');
+      alert('❌ An error occurred');
     }
   }
 
   async function handleDeleteContent(report: Report) {
-    const reason = prompt('سبب الحذف (اختياري):') || 'محتوى مبلغ عنه';
+    const reason = prompt('Reason for deletion (optional):') || 'Reported content';
 
-    if (!confirm(`هل تريد حذف ${report.content_type === 'post' ? 'المنشور' : 'التعليق'}؟`)) return;
+    if (!confirm(`Do you want to delete this ${report.content_type === 'post' ? 'post' : 'comment'}?`)) return;
 
     let result;
     if (report.content_type === 'post') {
@@ -101,22 +102,22 @@ export default function AdminReports() {
 
     if (result.success) {
       await updateReportStatus(report.id, 'resolved');
-      alert('✅ تم حذف المحتوى بنجاح');
+      alert('✅ Content deleted successfully');
       loadReports();
     } else {
-      alert('❌ حدث خطأ في الحذف');
+      alert('❌ An error occurred during deletion');
     }
   }
 
   async function handleBanUser(report: Report) {
-    const reason = prompt('سبب الحظر:');
+    const reason = prompt('Reason for ban:');
     if (!reason) return;
 
-    const isPermanent = confirm('حظر دائم؟ (اضغط Cancel للحظر المؤقت)');
+    const isPermanent = confirm('Permanent ban? (Press Cancel for temporary ban)');
 
     let bannedUntil: string | undefined;
     if (!isPermanent) {
-      const days = prompt('عدد أيام الحظر:', '7');
+      const days = prompt('Number of days for ban:', '7');
       if (!days) return;
       const date = new Date();
       date.setDate(date.getDate() + parseInt(days));
@@ -132,32 +133,32 @@ export default function AdminReports() {
 
     if (result.success) {
       await updateReportStatus(report.id, 'resolved');
-      alert('✅ تم حظر المستخدم بنجاح');
+      alert('✅ User banned successfully');
       loadReports();
     } else {
-      alert('❌ ' + (result.error || 'حدث خطأ'));
+      alert('❌ ' + (result.error || 'An error occurred'));
     }
   }
 
   const getReasonText = (reason: string) => {
     const reasons: Record<string, string> = {
-      spam: '🚫 رسائل مزعجة',
-      harassment: '😡 تحرش',
-      hate_speech: '💢 خطاب كراهية',
-      violence: '⚠️ عنف',
-      inappropriate_content: '🔞 محتوى غير لائق',
-      false_information: '❌ معلومات خاطئة',
-      other: '📝 أخرى'
+      spam: '🚫 Spam',
+      harassment: '😡 Harassment',
+      hate_speech: '💢 Hate Speech',
+      violence: '⚠️ Violence',
+      inappropriate_content: '🔞 Inappropriate Content',
+      false_information: '❌ False Information',
+      other: '📝 Other'
     };
     return reasons[reason] || reason;
   };
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, any> = {
-      pending: { bg: '#fef3c7', color: '#92400e', text: '⏳ معلق' },
-      reviewed: { bg: '#dbeafe', color: '#1e40af', text: '👀 تمت المراجعة' },
-      resolved: { bg: '#d1fae5', color: '#065f46', text: '✅ تم الحل' },
-      dismissed: { bg: '#fee2e2', color: '#991b1b', text: '🚫 مرفوض' }
+      pending: { bg: '#fef3c7', color: '#92400e', text: '⏳ Pending' },
+      reviewed: { bg: '#dbeafe', color: '#1e40af', text: '👀 Reviewed' },
+      resolved: { bg: '#d1fae5', color: '#065f46', text: '✅ Resolved' },
+      dismissed: { bg: '#fee2e2', color: '#991b1b', text: '🚫 Dismissed' }
     };
     const style = styles[status] || styles.pending;
 
@@ -177,50 +178,7 @@ export default function AdminReports() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      {/* Header */}
-      <header style={{
-        background: 'var(--card)',
-        borderBottom: '1px solid var(--border)',
-        padding: '20px 40px',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <button
-              onClick={() => navigate('/admin/dashboard')}
-              style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '24px',
-                cursor: 'pointer'
-              }}
-            >
-              ←
-            </button>
-            <span style={{ fontSize: '32px' }}>🚨</span>
-            <h1 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>
-              إدارة البلاغات
-            </h1>
-          </div>
-          <button
-            onClick={() => supabase.auth.signOut().then(() => navigate('/admin/login'))}
-            style={{
-              padding: '10px 20px',
-              background: '#fee',
-              border: '2px solid #fcc',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#c33'
-            }}
-          >
-            🚪 تسجيل الخروج
-          </button>
-        </div>
-      </header>
+      <AdminHeader title="Reports Management" />
 
       <main style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto' }}>
         {/* Filters */}
@@ -246,11 +204,11 @@ export default function AdminReports() {
                 transition: 'all 0.2s'
               }}
             >
-              {f === 'all' ? '📋 الكل' :
-               f === 'pending' ? '⏳ المعلقة' :
-               f === 'reviewed' ? '👀 المراجعة' :
-               f === 'resolved' ? '✅ المحلولة' :
-               '🚫 المرفوضة'}
+              {f === 'all' ? '📋 All' :
+               f === 'pending' ? '⏳ Pending' :
+               f === 'reviewed' ? '👀 Reviewed' :
+               f === 'resolved' ? '✅ Resolved' :
+               '🚫 Dismissed'}
             </button>
           ))}
         </div>
@@ -269,7 +227,7 @@ export default function AdminReports() {
           }}>
             <div style={{ fontSize: '64px', marginBottom: '20px' }}>📭</div>
             <h3 style={{ fontSize: '20px', color: 'var(--text)' }}>
-              لا توجد بلاغات في هذه الفئة
+              No reports in this category
             </h3>
           </div>
         ) : (
@@ -328,7 +286,7 @@ export default function AdminReports() {
                         color: 'var(--text-secondary)',
                         marginBottom: '4px'
                       }}>
-                        المُبلّغ
+                        Reporter
                       </div>
                       <div style={{
                         display: 'flex',
@@ -348,7 +306,7 @@ export default function AdminReports() {
                           />
                         )}
                         <span style={{ fontWeight: '600' }}>
-                          {report.reporter?.username || 'مستخدم محذوف'}
+                          {report.reporter?.username || 'Deleted User'}
                         </span>
                       </div>
                     </div>
@@ -359,7 +317,7 @@ export default function AdminReports() {
                         color: 'var(--text-secondary)',
                         marginBottom: '4px'
                       }}>
-                        المستخدم المُبلّغ عنه
+                        Reported User
                       </div>
                       <div style={{
                         display: 'flex',
@@ -379,7 +337,7 @@ export default function AdminReports() {
                           />
                         )}
                         <span style={{ fontWeight: '600', color: '#ef4444' }}>
-                          {report.reported_user?.username || 'مستخدم محذوف'}
+                          {report.reported_user?.username || 'Deleted User'}
                         </span>
                       </div>
                     </div>
@@ -390,10 +348,10 @@ export default function AdminReports() {
                         color: 'var(--text-secondary)',
                         marginBottom: '4px'
                       }}>
-                        نوع المحتوى
+                        Content Type
                       </div>
                       <span style={{ fontWeight: '600' }}>
-                        {report.content_type === 'post' ? '📝 منشور' : '💬 تعليق'}
+                        {report.content_type === 'post' ? '📝 Post' : '💬 Comment'}
                       </span>
                     </div>
                   </div>
@@ -405,7 +363,7 @@ export default function AdminReports() {
                         color: 'var(--text-secondary)',
                         marginBottom: '4px'
                       }}>
-                        التفاصيل
+                        Details
                       </div>
                       <p style={{
                         margin: 0,
@@ -444,7 +402,7 @@ export default function AdminReports() {
                       onMouseEnter={(e) => e.currentTarget.style.background = '#dc2626'}
                       onMouseLeave={(e) => e.currentTarget.style.background = '#ef4444'}
                     >
-                      🗑️ حذف المحتوى
+                      🗑️ Delete Content
                     </button>
 
                     <button
@@ -465,7 +423,7 @@ export default function AdminReports() {
                       onMouseEnter={(e) => e.currentTarget.style.background = '#d97706'}
                       onMouseLeave={(e) => e.currentTarget.style.background = '#f59e0b'}
                     >
-                      🚫 حظر المستخدم
+                      🚫 Ban User
                     </button>
 
                     <button
@@ -486,7 +444,7 @@ export default function AdminReports() {
                       onMouseEnter={(e) => e.currentTarget.style.background = '#059669'}
                       onMouseLeave={(e) => e.currentTarget.style.background = '#10b981'}
                     >
-                      ✅ تم الحل
+                      ✅ Resolved
                     </button>
 
                     <button
@@ -505,7 +463,7 @@ export default function AdminReports() {
                         transition: 'all 0.2s'
                       }}
                     >
-                      🚫 رفض البلاغ
+                      🚫 Dismiss Report
                     </button>
                   </div>
                 )}

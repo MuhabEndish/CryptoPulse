@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import Navbar from "../components/Navbar";
+import { useNavigate } from "react-router-dom";
 import NewPost from "../components/NewPost";
 import PostCard from "../components/PostCard";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -7,6 +7,7 @@ import { supabase } from "../services/supabase";
 import { useAuth } from "../hooks/useAuth";
 
 export default function Feed() {
+  const navigate = useNavigate();
   const user = useAuth();
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,7 +15,7 @@ export default function Feed() {
   async function loadPosts() {
     setLoading(true);
 
-    // جلب قائمة المستخدمين المحظورين
+    // Fetch list of banned users
     const { data: bannedUsers } = await supabase
       .from('banned_users')
       .select('user_id');
@@ -40,7 +41,7 @@ export default function Feed() {
 
     console.log("Posts loaded:", data);
 
-    // التأكد من أن البيانات موجودة قبل المعالجة
+    // Make sure data exists before processing
     if (!data || data.length === 0) {
       console.log("No posts found");
       setPosts([]);
@@ -48,7 +49,7 @@ export default function Feed() {
       return;
     }
 
-    // فلترة المنشورات من المستخدمين المحظورين
+    // Filter posts from banned users
     const filteredData = data.filter((post: any) =>
       !bannedUserIds.includes(post.user_id)
     );
@@ -66,27 +67,29 @@ export default function Feed() {
   }
 
   useEffect(() => {
+    if (!user) return;
+
     loadPosts();
 
-    // ✅ Real-time subscription للمنشورات
+    // ✅ Real-time subscription for posts
     const postsChannel = supabase
       .channel("posts-channel")
       .on(
         "postgres_changes",
         {
-          event: "*", // الاستماع لكل التغييرات (INSERT, UPDATE, DELETE)
+          event: "*", // Listen to all changes (INSERT, UPDATE, DELETE)
           schema: "public",
           table: "posts",
         },
         (payload) => {
           console.log("Real-time post change:", payload);
-          // إعادة تحميل المنشورات عند أي تغيير
+          // Reload posts on any change
           loadPosts();
         }
       )
       .subscribe();
 
-    // ✅ Real-time subscription للإعجابات
+    // ✅ Real-time subscription for likes
     const likesChannel = supabase
       .channel("likes-channel")
       .on(
@@ -103,7 +106,7 @@ export default function Feed() {
       )
       .subscribe();
 
-    // ✅ Real-time subscription للتعليقات
+    // ✅ Real-time subscription for comments
     const commentsChannel = supabase
       .channel("comments-channel")
       .on(
@@ -120,30 +123,52 @@ export default function Feed() {
       )
       .subscribe();
 
-    // تنظيف الاشتراكات عند مغادرة الصفحة
+    // Cleanup subscriptions when leaving page
     return () => {
       supabase.removeChannel(postsChannel);
       supabase.removeChannel(likesChannel);
       supabase.removeChannel(commentsChannel);
     };
-  }, []);
+  }, [user]);
 
-  if (!user) return <a href="/auth">Login to continue</a>;
+  // Show loading state while checking authentication
+  if (user === undefined) {
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner size="medium" message="Loading..." />
+      </div>
+    );
+  }
+
+  if (!user) {
+    navigate('/auth')
+    window.location.href = "/auth";
+    return null;
+  }
 
   return (
-    <div className="container">
-      <Navbar />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-white mb-2">Social Feed</h1>
+        <p className="text-gray-400">Share your thoughts and insights about crypto</p>
+      </div>
+
       <NewPost onPost={loadPosts} />
+
       {loading ? (
-        <LoadingSpinner size="medium" message="Loading posts..." />
+        <div className="flex justify-center py-12">
+          <LoadingSpinner size="medium" message="Loading posts..." />
+        </div>
       ) : posts.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "40px", opacity: 0.6 }}>
-          <p>No posts yet. Be the first to post!</p>
+        <div className="bg-dark-card border border-dark-border rounded-xl p-12 text-center">
+          <p className="text-gray-400">No posts yet. Be the first to post!</p>
         </div>
       ) : (
-        posts.map((post) => (
-          <PostCard key={post.id} post={post} onChange={loadPosts} />
-        ))
+        <div className="space-y-4">
+          {posts.map((post) => (
+            <PostCard key={post.id} post={post} onChange={loadPosts} />
+          ))}
+        </div>
       )}
     </div>
   );

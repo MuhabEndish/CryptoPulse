@@ -7,6 +7,7 @@ import {
   supabase
 } from '../../services/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import AdminHeader from '../../components/AdminHeader';
 
 interface Post {
   id: string;
@@ -51,18 +52,18 @@ export default function AdminPosts() {
   }
 
   async function handleDeletePost(postId: string, username: string) {
-    const reason = prompt(`سبب حذف منشور ${username}:`);
+    const reason = prompt(`Reason for deleting ${username}'s post:`);
     if (!reason) return;
 
-    if (!confirm('هل تريد حذف هذا المنشور نهائياً؟')) return;
+    if (!confirm('Do you want to delete this post permanently?')) return;
 
     const result = await adminDeletePost(postId, reason);
     if (result.success) {
-      alert('✅ تم حذف المنشور بنجاح');
+      alert('✅ Post deleted successfully');
       loadPosts();
       setSelectedPost(null);
     } else {
-      alert('❌ حدث خطأ في الحذف');
+      alert('❌ An error occurred during deletion');
     }
   }
 
@@ -73,58 +74,14 @@ export default function AdminPosts() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      {/* Header */}
-      <header style={{
-        background: 'var(--card)',
-        borderBottom: '1px solid var(--border)',
-        padding: '20px 40px',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <button
-              onClick={() => navigate('/admin/dashboard')}
-              style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '24px',
-                cursor: 'pointer'
-              }}
-            >
-              ←
-            </button>
-            <span style={{ fontSize: '32px' }}>📝</span>
-            <h1 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>
-              إدارة المنشورات
-            </h1>
-          </div>
-          <button
-            onClick={() => supabase.auth.signOut().then(() => navigate('/admin/login'))}
-            style={{
-              padding: '10px 20px',
-              background: '#fee',
-              border: '2px solid #fcc',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#c33'
-            }}
-          >
-            🚪 تسجيل الخروج
-          </button>
-        </div>
-      </header>
+      <AdminHeader title="Posts Management" />
 
       <main style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto' }}>
         {/* Search */}
         <div style={{ marginBottom: '30px' }}>
           <input
             type="text"
-            placeholder="🔍 البحث في المنشورات (المحتوى أو اسم المستخدم)..."
+            placeholder="🔍 Search posts (content or username)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
@@ -153,7 +110,7 @@ export default function AdminPosts() {
             border: '2px solid var(--border)'
           }}>
             <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-              إجمالي المنشورات
+              Total Posts
             </div>
             <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--accent)' }}>
               {posts.length}
@@ -166,7 +123,7 @@ export default function AdminPosts() {
             border: '2px solid var(--border)'
           }}>
             <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-              منشورات بصور
+              Posts with Images
             </div>
             <div style={{ fontSize: '32px', fontWeight: '700', color: '#10b981' }}>
               {posts.filter(p => p.image_url).length}
@@ -179,7 +136,7 @@ export default function AdminPosts() {
             border: '2px solid var(--border)'
           }}>
             <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-              إجمالي الإعجابات
+              Total Likes
             </div>
             <div style={{ fontSize: '32px', fontWeight: '700', color: '#f59e0b' }}>
               {posts.reduce((sum, p) => sum + (p.likes[0]?.count || 0), 0)}
@@ -201,7 +158,7 @@ export default function AdminPosts() {
           }}>
             <div style={{ fontSize: '64px', marginBottom: '20px' }}>📭</div>
             <h3 style={{ fontSize: '20px', color: 'var(--text)' }}>
-              لا توجد منشورات
+              No posts
             </h3>
           </div>
         ) : (
@@ -345,7 +302,7 @@ export default function AdminPosts() {
                     onMouseEnter={(e) => e.currentTarget.style.background = '#dc2626'}
                     onMouseLeave={(e) => e.currentTarget.style.background = '#ef4444'}
                   >
-                    🗑️ حذف المنشور
+                    🗑️ Delete Post
                   </button>
                 </div>
               </div>
@@ -392,7 +349,7 @@ export default function AdminPosts() {
                 alignItems: 'center'
               }}>
                 <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700' }}>
-                  تفاصيل المنشور
+                  Post Details
                 </h2>
                 <button
                   onClick={() => setSelectedPost(null)}
@@ -491,8 +448,8 @@ export default function AdminPosts() {
                 gap: '30px',
                 fontSize: '15px'
               }}>
-                <span>❤️ {selectedPost.likes[0]?.count || 0} إعجاب</span>
-                <span>💬 {selectedPost.comments[0]?.count || 0} تعليق</span>
+                <span>❤️ {selectedPost.likes[0]?.count || 0} Likes</span>
+                <span>💬 {selectedPost.comments[0]?.count || 0} Comments</span>
               </div>
 
               {/* Actions */}
@@ -514,7 +471,7 @@ export default function AdminPosts() {
                   onMouseEnter={(e) => e.currentTarget.style.background = '#dc2626'}
                   onMouseLeave={(e) => e.currentTarget.style.background = '#ef4444'}
                 >
-                  🗑️ حذف المنشور نهائياً
+                  🗑️ Delete Post Permanently
                 </button>
               </div>
             </div>

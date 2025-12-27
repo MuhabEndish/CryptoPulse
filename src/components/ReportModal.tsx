@@ -30,7 +30,7 @@ export default function ReportModal({
     e.preventDefault();
 
     if (!selectedReason) {
-      showToast('الرجاء اختيار سبب البلاغ', 'error');
+      showToast('Please select a reason for the report', 'error');
       return;
     }
 
@@ -49,12 +49,12 @@ export default function ReportModal({
     setIsSubmitting(false);
 
     if (result.success) {
-      showToast('✅ تم إرسال البلاغ بنجاح. سيتم مراجعته قريباً.', 'success');
+      showToast('✅ Report submitted successfully. It will be reviewed soon.', 'success');
       onClose();
       setSelectedReason('');
       setDetails('');
     } else {
-      showToast(result.error || 'فشل إرسال البلاغ', 'error');
+      showToast(result.error || 'Failed to submit report', 'error');
     }
   }
 
@@ -108,7 +108,7 @@ export default function ReportModal({
             marginBottom: '20px'
           }}>
             <h2 style={{ margin: 0, fontSize: '20px' }}>
-              🚨 الإبلاغ عن محتوى
+              🚨 Report Content
             </h2>
             <button
               onClick={handleClose}
@@ -150,8 +150,8 @@ export default function ReportModal({
               marginBottom: '20px',
               lineHeight: '1.6'
             }}>
-              إذا كنت تعتقد أن هذا {contentType === 'post' ? 'المنشور' : 'التعليق'} ينتهك قواعد المجتمع،
-              يرجى إخبارنا بذلك. سيتم مراجعة بلاغك من قبل فريقنا.
+              If you believe this {contentType === 'post' ? 'post' : 'comment'} violates community rules,
+              please let us know. Your report will be reviewed by our team.
             </p>
 
             {/* Reasons */}
@@ -162,7 +162,7 @@ export default function ReportModal({
                 fontWeight: 600,
                 color: 'white'
               }}>
-                سبب البلاغ: <span style={{ color: '#ef4444' }}>*</span>
+                Report Reason: <span style={{ color: '#ef4444' }}>*</span>
               </label>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
