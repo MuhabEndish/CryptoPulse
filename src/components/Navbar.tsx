@@ -1,7 +1,31 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import ReactDOM from "react-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { supabase } from "../services/supabase";
 import { useAuth } from "../hooks/useAuth";
+import PriceAlertModal from "./PriceAlertModal";
+import { useToast } from "./ToastProvider";
+import {
+  AiOutlineDashboard as DashboardOutlined,
+  AiOutlineGlobal as GlobalOutlined,
+  AiOutlineMessage as MessageOutlined,
+  AiOutlineStar as StarOutlined,
+  AiOutlineBell as BellOutlined,
+  AiOutlineSearch as SearchOutlined,
+  AiOutlineMoon as MoonOutlined,
+  AiOutlineSun as SunOutlined,
+  AiOutlinePlus as PlusOutlined,
+  AiOutlineUser as UserOutlined,
+  AiOutlineLogout as LogoutOutlined,
+  AiOutlineEdit as EditOutlined,
+  AiOutlineWarning as WarningOutlined,
+  AiOutlineHeart as HeartOutlined,
+  AiOutlineArrowUp as ArrowUpOutlined,
+  AiOutlineArrowDown as ArrowDownOutlined,
+  AiOutlineMinus as MinusOutlined,
+  AiOutlineMenu as MenuOutlined,
+  AiOutlineComment as CommentOutlined
+} from 'react-icons/ai';
 
 interface Notification {
   id: string;
@@ -15,6 +39,7 @@ interface Notification {
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const user = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [darkMode, setDarkMode] = useState(() => {
@@ -23,10 +48,39 @@ export default function Navbar() {
   });
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showQuickAction, setShowQuickAction] = useState(false);
+  const [marketSentiment, setMarketSentiment] = useState<"Bullish" | "Bearish" | "Neutral">("Neutral");
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [userProfile, setUserProfile] = useState<{avatar_url?: string} | null>(null);
+  const [showCoinSelector, setShowCoinSelector] = useState(false);
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [selectedCoin, setSelectedCoin] = useState<any>(null);
+  const [coins, setCoins] = useState<any[]>([]);
+  const [loadingCoins, setLoadingCoins] = useState(false);
+  const { showToast } = useToast();
   const menuRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const mobileButtonRef = useRef<HTMLButtonElement>(null);
+  const quickActionRef = useRef<HTMLDivElement>(null);
+
+  const primaryNavItems = [
+    { icon: <DashboardOutlined />, label: "Dashboard", path: "/" },
+    { icon: <GlobalOutlined />, label: "Market", path: "/market" },
+    { icon: <MessageOutlined />, label: "Social", path: "/feed" },
+  ];
+
+  const secondaryNavItems = [
+    { icon: <StarOutlined />, label: "Watchlist", path: "/favorites" },
+    { icon: <BellOutlined />, label: "Alerts", path: "/alerts" },
+  ];
+
+  const isActive = (path: string) => {
+    if (path === "/") return pathname === "/";
+    return pathname.startsWith(path);
+  };
 
   // Apply dark mode to document
   useEffect(() => {
@@ -47,13 +101,24 @@ export default function Navbar() {
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
         setShowNotifications(false);
       }
+      if (quickActionRef.current && !quickActionRef.current.contains(event.target as Node)) {
+        setShowQuickAction(false);
+      }
+      if (
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(event.target as Node) &&
+        mobileButtonRef.current &&
+        !mobileButtonRef.current.contains(event.target as Node)
+      ) {
+        setShowMobileMenu(false);
+      }
     }
 
-    if (showUserMenu || showNotifications) {
+    if (showUserMenu || showNotifications || showMobileMenu || showQuickAction) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [showUserMenu, showNotifications]);
+  }, [showUserMenu, showNotifications, showMobileMenu, showQuickAction]);
 
   // Clear unread count when opening notifications
   useEffect(() => {
@@ -72,6 +137,7 @@ export default function Navbar() {
   useEffect(() => {
     if (!user) return;
     loadNotifications();
+    loadUserProfile();
 
     // Real-time subscription for new likes and comments
     const likesChannel = supabase
@@ -105,6 +171,50 @@ export default function Navbar() {
       supabase.removeChannel(commentsChannel);
     };
   }, [user]);
+
+  // Fetch market sentiment
+  useEffect(() => {
+    async function fetchMarketSentiment() {
+      try {
+        const response = await fetch(
+          "https://api.coingecko.com/api/v3/global"
+        );
+        const data = await response.json();
+
+        const marketCapChangePercentage = data.data.market_cap_change_percentage_24h_usd;
+
+        if (marketCapChangePercentage > 2) {
+          setMarketSentiment("Bullish");
+        } else if (marketCapChangePercentage < -2) {
+          setMarketSentiment("Bearish");
+        } else {
+          setMarketSentiment("Neutral");
+        }
+      } catch (error) {
+        console.error("Error fetching market sentiment:", error);
+        setMarketSentiment("Neutral");
+      }
+    }
+
+    fetchMarketSentiment();
+    // Update every 5 minutes
+    const interval = setInterval(fetchMarketSentiment, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  async function loadUserProfile() {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("avatar_url")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (!error && data) {
+      setUserProfile(data);
+    }
+  }
 
   async function loadNotifications() {
     if (!user) return;
@@ -221,7 +331,7 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/auth");
+    navigate("/login");
   };
 
   function getTimeAgo(dateString: string) {
@@ -237,40 +347,164 @@ export default function Navbar() {
 
   return (
     <nav className="sticky top-0 z-30 bg-dark-card border-b border-dark-border backdrop-blur-sm bg-opacity-95">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 gap-4">
 
-          {/* Left: Logo (Mobile Only) */}
-          <div className="flex items-center md:hidden">
-            <span className="text-2xl">₿</span>
+          {/* ========== LEFT ZONE: Logo + Navigation ========== */}
+          <div className="flex items-center gap-4">
+            {/* Logo */}
+            <Link to="/" className="flex items-center mr-2">
+              <img
+                src="/images/CryptoPulseLogo.png"
+                alt="CryptoPulse Logo"
+                className="h-15 w-auto"
+              />
+              <span className="hidden sm:inline-block text-white font-bold text-lg -ml-2">
+                CryptoPulse
+              </span>
+            </Link>
+
+            {/* Mobile Menu Button */}
+            <button
+              ref={mobileButtonRef}
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="lg:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-dark transition-all"
+            >
+              <MenuOutlined className="text-2xl" />
+            </button>
+
+            {/* Primary Navigation - Desktop */}
+            <div className="hidden lg:flex items-center gap-1">
+              {primaryNavItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-sm font-medium ${
+                    isActive(item.path)
+                      ? "bg-primary text-white shadow-glow"
+                      : "text-gray-400 hover:bg-dark hover:text-white"
+                  }`}
+                >
+                  <span className="text-xl">{item.icon}</span>
+                  <span>{item.label}</span>
+                </Link>
+              ))}
+            </div>
           </div>
 
-          {/* Center: Search Bar */}
-          <form onSubmit={handleSearch} className="flex-1 max-w-2xl mx-4">
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                🔍
-              </span>
-              <input
-                type="text"
-                placeholder="Search coins, posts, or hashtags..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-dark rounded-lg border border-dark-border text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-              />
-            </div>
-          </form>
+          {/* ========== CENTER ZONE: Search + Market Context ========== */}
+          <div className="flex-1 flex items-center gap-3 max-w-2xl">
+            {/* Search Bar */}
+            <form onSubmit={handleSearch} className="flex-1 max-w-md">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg">
+                  <SearchOutlined />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search coins, posts, users (⌘K)..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-dark rounded-lg border border-dark-border text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                />
+              </div>
+            </form>
 
-          {/* Right: Controls */}
-          <div className="flex items-center gap-3">
+            {/* Market Pulse Indicator - Desktop */}
+            <div className="hidden xl:flex items-center gap-2 px-3 py-1 rounded-lg bg-dark border border-dark-border">
+              <span className={`text-xl ${
+                marketSentiment === "Bullish" ? "text-green-500" :
+                marketSentiment === "Bearish" ? "text-red-500" :
+                "text-gray-400"
+              }`}>
+                {marketSentiment === "Bullish" ? <ArrowUpOutlined /> :
+                 marketSentiment === "Bearish" ? <ArrowDownOutlined /> :
+                 <MinusOutlined />}
+              </span>
+              <span className="text-xs text-gray-400">
+                Market: <span className={
+                  marketSentiment === "Bullish" ? "text-green-400" :
+                  marketSentiment === "Bearish" ? "text-red-400" :
+                  "text-gray-400"
+                }>{marketSentiment}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* ========== RIGHT ZONE: Actions ========== */}
+          <div className="flex items-center gap-2">
+
+            {/* Quick Action Button (+) */}
+            {user && (
+              <div className="relative" ref={quickActionRef}>
+                <button
+                  onClick={() => setShowQuickAction(!showQuickAction)}
+                  className="p-2 rounded-lg bg-primary text-white hover:bg-primary/80 transition-all"
+                  title="Quick Actions"
+                >
+                  <PlusOutlined className="text-xl" />
+                </button>
+
+                {showQuickAction && (
+                  <div className="absolute right-0 mt-2 w-48 bg-dark-card border border-dark-border rounded-lg shadow-glow-lg overflow-hidden">
+                    <button
+                      onClick={() => {
+                        navigate("/create-post");
+                        setShowQuickAction(false);
+                      }}
+                      className="w-full px-4 py-3 text-left text-white hover:bg-dark transition-colors flex items-center gap-3"
+                    >
+                      <EditOutlined className="text-lg" />
+                      <span className="text-sm font-medium">Create Post</span>
+                    </button>
+                    <button
+                      onClick={async () => {
+                        console.log("Create Alert clicked!");
+                        setShowQuickAction(false);
+                        setShowCoinSelector(true);
+                        setLoadingCoins(true);
+                        console.log("showCoinSelector set to true");
+                        try {
+                          const response = await fetch(
+                            "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false"
+                          );
+                          const data = await response.json();
+                          setCoins(data);
+                          console.log("Coins loaded:", data.length);
+                        } catch (error) {
+                          console.error("Error loading coins:", error);
+                          showToast("Failed to load coins", "error");
+                        } finally {
+                          setLoadingCoins(false);
+                        }
+                      }}
+                      className="w-full px-4 py-3 text-left text-white hover:bg-dark transition-colors flex items-center gap-3"
+                    >
+                      <BellOutlined className="text-lg" />
+                      <span className="text-sm font-medium">Create Alert</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate("/favorites");
+                        setShowQuickAction(false);
+                      }}
+                      className="w-full px-4 py-3 text-left text-white hover:bg-dark transition-colors flex items-center gap-3"
+                    >
+                      <StarOutlined className="text-lg" />
+                      <span className="text-sm font-medium">Add to Watchlist</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Dark Mode Toggle */}
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-dark transition-all"
+              className="hidden sm:block p-2 rounded-lg text-gray-400 hover:text-white hover:bg-dark transition-all"
               title={darkMode ? "Light Mode" : "Dark Mode"}
             >
-              <span className="text-xl">{darkMode ? "🌙" : "☀️"}</span>
+              {darkMode ? <MoonOutlined className="text-xl" /> : <SunOutlined className="text-xl" />}
             </button>
 
             {/* Notifications */}
@@ -280,7 +514,7 @@ export default function Navbar() {
                 className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-dark transition-all relative"
                 title="Notifications"
               >
-                <span className="text-xl">🔔</span>
+                <BellOutlined className="text-xl" />
                 {unreadCount > 0 && (
                   <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1">
                     {unreadCount > 9 ? "9+" : unreadCount}
@@ -298,7 +532,7 @@ export default function Navbar() {
                   <div className="max-h-96 overflow-y-auto">
                     {notifications.length === 0 ? (
                       <div className="p-8 text-center text-gray-400">
-                        <span className="text-4xl mb-2 block">🔔</span>
+                        <BellOutlined className="text-5xl mb-2" />
                         <p>No notifications yet</p>
                       </div>
                     ) : (
@@ -313,7 +547,7 @@ export default function Navbar() {
                         >
                           <div className="flex items-start gap-3">
                             <span className="text-2xl">
-                              {notification.type === "like" ? "❤️" : "💬"}
+                              {notification.type === "like" ? <HeartOutlined style={{color: '#ef4444'}} /> : <CommentOutlined style={{color: '#8b5cf6'}} />}
                             </span>
                             <div className="flex-1 min-w-0">
                               <p className="text-white text-sm mb-1">
@@ -350,12 +584,27 @@ export default function Navbar() {
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center gap-2 p-2 rounded-lg text-gray-400 hover:text-white hover:bg-dark transition-all"
+                  className="flex items-center gap-2 p-1 rounded-lg hover:bg-dark transition-all"
                 >
-                  <span className="text-xl">👤</span>
-                  <span className="hidden sm:inline text-sm font-medium text-white">
-                    Profile
-                  </span>
+                  {userProfile?.avatar_url ? (
+                    <img
+                      src={userProfile.avatar_url}
+                      alt="Profile"
+                      className="w-8 h-8 rounded-full object-cover border-2 border-gray-600"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center border-2 border-gray-600">
+                      <UserOutlined className="text-base" />
+                    </div>
+                  )}
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
 
                 {/* Dropdown Menu */}
@@ -366,41 +615,41 @@ export default function Navbar() {
                         navigate("/profile");
                         setShowUserMenu(false);
                       }}
-                      className="w-full px-4 py-2 text-left text-white hover:bg-dark transition-colors"
+                      className="w-full px-4 py-2 text-left text-white hover:bg-dark transition-colors flex items-center gap-2"
                     >
-                      👤 My Profile
+                      <UserOutlined className="text-lg" /> My Profile
                     </button>
                     <button
                       onClick={() => {
                         navigate("/favorites");
                         setShowUserMenu(false);
                       }}
-                      className="w-full px-4 py-2 text-left text-white hover:bg-dark transition-colors"
+                      className="w-full px-4 py-2 text-left text-white hover:bg-dark transition-colors flex items-center gap-2"
                     >
-                      ⭐ Watchlist
+                      <StarOutlined className="text-lg" /> Watchlist
                     </button>
                     <button
                       onClick={() => {
                         navigate("/alerts");
                         setShowUserMenu(false);
                       }}
-                      className="w-full px-4 py-2 text-left text-white hover:bg-dark transition-colors"
+                      className="w-full px-4 py-2 text-left text-white hover:bg-dark transition-colors flex items-center gap-2"
                     >
-                      🔔 Price Alerts
+                      <BellOutlined className="text-lg" /> Price Alerts
                     </button>
                     <hr className="border-dark-border" />
                     <button
                       onClick={handleLogout}
-                      className="w-full px-4 py-2 text-left text-red-400 hover:bg-dark transition-colors"
+                      className="w-full px-4 py-2 text-left text-red-400 hover:bg-dark transition-colors flex items-center gap-2"
                     >
-                      🚪 Logout
+                      <LogoutOutlined className="text-lg" /> Logout
                     </button>
                   </div>
                 )}
               </div>
             ) : (
               <button
-                onClick={() => navigate("/auth")}
+                onClick={() => navigate("/login")}
                 className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-all"
               >
                 Login
@@ -409,6 +658,136 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Menu Dropdown */}
+      {showMobileMenu && (
+        <div ref={mobileMenuRef} className="lg:hidden border-t border-dark-border bg-dark-card">
+          <div className="px-4 py-2 space-y-1">
+            {/* Primary Navigation */}
+            {primaryNavItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setShowMobileMenu(false)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                  isActive(item.path)
+                    ? "bg-primary text-white shadow-glow"
+                    : "text-gray-400 hover:bg-dark hover:text-white"
+                }`}
+              >
+                <span className="text-2xl">{item.icon}</span>
+                <span className="font-medium">{item.label}</span>
+              </Link>
+            ))}
+
+            {/* Secondary Navigation */}
+            <div className="pt-2 border-t border-dark-border">
+              {secondaryNavItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setShowMobileMenu(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                    isActive(item.path)
+                      ? "bg-primary text-white shadow-glow"
+                      : "text-gray-400 hover:bg-dark hover:text-white"
+                  }`}
+                >
+                  <span className="text-2xl">{item.icon}</span>
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Coin Selector Modal */}
+      {showCoinSelector && ReactDOM.createPortal(
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 overflow-y-auto"
+          style={{ zIndex: 99999 }}
+          onClick={() => {
+            console.log("Backdrop clicked");
+            setShowCoinSelector(false);
+          }}
+        >
+          <div
+            className="bg-dark-card border border-primary/30 rounded-xl max-w-2xl w-full max-h-[85vh] my-auto overflow-hidden flex flex-col shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-dark-border bg-gradient-to-r from-primary/10 to-pink-500/10">
+              <div>
+                <h2 className="text-xl font-bold text-white">Select Cryptocurrency</h2>
+                <p className="text-gray-400 text-sm mt-1">Choose a coin to create a price alert</p>
+              </div>
+              <button
+                onClick={() => setShowCoinSelector(false)}
+                className="text-gray-400 hover:text-white hover:bg-dark rounded-lg p-2 transition-colors text-2xl"
+                title="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Coin List */}
+            <div className="overflow-y-auto flex-1 p-4">
+              {loadingCoins ? (
+                <div className="text-center py-12">
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mb-4"></div>
+                  <p className="text-gray-400">Loading coins...</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {coins.map((coin) => (
+                    <button
+                      key={coin.id}
+                      onClick={() => {
+                        setSelectedCoin({
+                          id: coin.id,
+                          name: coin.name,
+                          symbol: coin.symbol,
+                          current_price: coin.current_price
+                        });
+                        setShowCoinSelector(false);
+                        setShowAlertModal(true);
+                      }}
+                      className="w-full flex items-center gap-4 p-4 bg-dark rounded-lg hover:bg-dark-card border border-dark-border hover:border-primary/50 transition-all text-left group"
+                    >
+                      <img src={coin.image} alt={coin.name} className="w-12 h-12 rounded-full" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-white font-semibold group-hover:text-primary transition-colors">{coin.name}</span>
+                          <span className="text-gray-400 uppercase text-sm">{coin.symbol}</span>
+                        </div>
+                        <span className="text-primary font-bold text-lg">
+                          ${coin.current_price.toLocaleString()}
+                        </span>
+                      </div>
+                      <BellOutlined className="text-gray-400 group-hover:text-primary text-xl transition-colors" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Price Alert Modal */}
+      {showAlertModal && selectedCoin && user && (
+        <PriceAlertModal
+          isOpen={showAlertModal}
+          onClose={() => {
+            setShowAlertModal(false);
+            setSelectedCoin(null);
+          }}
+          coin={selectedCoin}
+          userId={user.id}
+        />
+      )}
     </nav>
   );
 }

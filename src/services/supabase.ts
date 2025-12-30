@@ -180,13 +180,13 @@ export async function submitReport(reportData: ReportData, userId: string): Prom
  * Get translated report reasons
  */
 export const reportReasons: Record<ReportReason, string> = {
-  spam: '🚫 Spam or annoying ads',
-  harassment: '😡 Harassment or bullying',
-  hate_speech: '🤬 Hate speech',
-  violence: '🔪 Violence or threats',
-  inappropriate_content: '🔞 Inappropriate content',
-  false_information: '📰 False or misleading information',
-  other: '❓ Other reason'
+  spam: 'Spam or annoying ads',
+  harassment: 'Harassment or bullying',
+  hate_speech: 'Hate speech',
+  violence: 'Violence or threats',
+  inappropriate_content: 'Inappropriate content',
+  false_information: 'False or misleading information',
+  other: 'Other reason'
 };
 
 // ===================================================
@@ -219,11 +219,11 @@ export async function checkAdminStatus(): Promise<{ isAdmin: boolean; adminData?
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      console.log('❌ No user found');
+      console.log('[Error] No user found');
       return { isAdmin: false };
     }
 
-    console.log('🔍 Checking admin status for user:', user.id);
+    console.log('[Info] Checking admin status for user:', user.id);
 
     // Use maybeSingle instead of single to avoid RLS issues
     const { data, error } = await supabase
@@ -235,22 +235,22 @@ export async function checkAdminStatus(): Promise<{ isAdmin: boolean; adminData?
     console.log('Admin query result:', { data, error });
 
     if (error) {
-      console.error('❌ Error querying admins table:', error);
+      console.error('[Error] Error querying admins table:', error);
       return { isAdmin: false };
     }
 
     if (!data) {
-      console.log('❌ No admin record found for user');
+      console.log('[Error] No admin record found for user');
       return { isAdmin: false };
     }
 
-    console.log('✅ Admin found:', data.role);
+    console.log('[Success] Admin found:', data.role);
     return {
       isAdmin: true,
       adminData: data as AdminData
     };
   } catch (error) {
-    console.error('❌ Error checking admin status:', error);
+    console.error('[Error] Error checking admin status:', error);
     return { isAdmin: false };
   }
 }

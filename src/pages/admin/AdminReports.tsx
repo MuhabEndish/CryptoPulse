@@ -11,6 +11,16 @@ import {
 } from '../../services/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import AdminHeader from '../../components/AdminHeader';
+import {
+  AiOutlineEye,
+  AiOutlineCheck,
+  AiOutlineClose,
+  AiOutlineDelete,
+  AiOutlineFileText,
+  AiOutlineArrowLeft,
+  AiOutlineWarning,
+  AiOutlineLogout
+} from 'react-icons/ai';
 
 interface Report {
   id: string;
@@ -69,10 +79,10 @@ export default function AdminReports() {
 
     const result = await updateReportStatus(reportId, 'resolved');
     if (result.success) {
-      alert('✅ Report status updated');
+      alert('[Success] Report status updated');
       loadReports();
     } else {
-      alert('❌ An error occurred');
+      alert('[Error] An error occurred');
     }
   }
 
@@ -81,10 +91,10 @@ export default function AdminReports() {
 
     const result = await updateReportStatus(reportId, 'dismissed');
     if (result.success) {
-      alert('✅ Report dismissed');
+      alert('[Success] Report dismissed');
       loadReports();
     } else {
-      alert('❌ An error occurred');
+      alert('[Error] An error occurred');
     }
   }
 
@@ -102,10 +112,10 @@ export default function AdminReports() {
 
     if (result.success) {
       await updateReportStatus(report.id, 'resolved');
-      alert('✅ Content deleted successfully');
+      alert('[Success] Content deleted successfully');
       loadReports();
     } else {
-      alert('❌ An error occurred during deletion');
+      alert('[Error] An error occurred during deletion');
     }
   }
 
@@ -133,32 +143,32 @@ export default function AdminReports() {
 
     if (result.success) {
       await updateReportStatus(report.id, 'resolved');
-      alert('✅ User banned successfully');
+      alert('[Success] User banned successfully');
       loadReports();
     } else {
-      alert('❌ ' + (result.error || 'An error occurred'));
+      alert('[Error] ' + (result.error || 'An error occurred'));
     }
   }
 
   const getReasonText = (reason: string) => {
     const reasons: Record<string, string> = {
-      spam: '🚫 Spam',
-      harassment: '😡 Harassment',
-      hate_speech: '💢 Hate Speech',
-      violence: '⚠️ Violence',
-      inappropriate_content: '🔞 Inappropriate Content',
-      false_information: '❌ False Information',
-      other: '📝 Other'
+      spam: 'Spam',
+      harassment: 'Harassment',
+      hate_speech: 'Hate Speech',
+      violence: 'Violence',
+      inappropriate_content: 'Inappropriate Content',
+      false_information: 'False Information',
+      other: 'Other'
     };
     return reasons[reason] || reason;
   };
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, any> = {
-      pending: { bg: '#fef3c7', color: '#92400e', text: '⏳ Pending' },
-      reviewed: { bg: '#dbeafe', color: '#1e40af', text: '👀 Reviewed' },
-      resolved: { bg: '#d1fae5', color: '#065f46', text: '✅ Resolved' },
-      dismissed: { bg: '#fee2e2', color: '#991b1b', text: '🚫 Dismissed' }
+      pending: { bg: '#fef3c7', color: '#92400e', text: 'Pending' },
+      reviewed: { bg: '#dbeafe', color: '#1e40af', text: 'Reviewed' },
+      resolved: { bg: '#d1fae5', color: '#065f46', text: 'Resolved' },
+      dismissed: { bg: '#fee2e2', color: '#991b1b', text: 'Dismissed' }
     };
     const style = styles[status] || styles.pending;
 
@@ -178,7 +188,52 @@ export default function AdminReports() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <AdminHeader title="Reports Management" />
+      {/* Header */}
+      <header style={{
+        background: 'var(--card)',
+        borderBottom: '1px solid var(--border)',
+        padding: '20px 40px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <button
+              onClick={() => navigate('/admin/dashboard')}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '24px',
+                cursor: 'pointer',
+                color: 'var(--text)'
+              }}
+            >
+              <AiOutlineArrowLeft />
+            </button>
+            <AiOutlineWarning style={{ fontSize: '32px', color: 'var(--accent)' }} />
+            <h1 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>
+              Reports Management
+            </h1>
+          </div>
+          <button
+            onClick={() => supabase.auth.signOut().then(() => navigate('/admin/login'))}
+            style={{
+              padding: '10px 20px',
+              background: '#fee',
+              border: '2px solid #fcc',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#c33'
+            }}
+          >
+            <AiOutlineLogout style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} /> Logout
+          </button>
+        </div>
+      </header>
 
       <main style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto' }}>
         {/* Filters */}
@@ -204,11 +259,11 @@ export default function AdminReports() {
                 transition: 'all 0.2s'
               }}
             >
-              {f === 'all' ? '📋 All' :
-               f === 'pending' ? '⏳ Pending' :
-               f === 'reviewed' ? '👀 Reviewed' :
-               f === 'resolved' ? '✅ Resolved' :
-               '🚫 Dismissed'}
+              {f === 'all' ? 'All' :
+               f === 'pending' ? 'Pending' :
+               f === 'reviewed' ? 'Reviewed' :
+               f === 'resolved' ? 'Resolved' :
+               'Dismissed'}
             </button>
           ))}
         </div>
@@ -225,7 +280,7 @@ export default function AdminReports() {
             background: 'var(--card)',
             borderRadius: '12px'
           }}>
-            <div style={{ fontSize: '64px', marginBottom: '20px' }}>📭</div>
+            <AiOutlineFileText style={{ fontSize: '64px', marginBottom: '20px', opacity: 0.5 }} />
             <h3 style={{ fontSize: '20px', color: 'var(--text)' }}>
               No reports in this category
             </h3>
@@ -262,7 +317,7 @@ export default function AdminReports() {
                       color: 'var(--text-secondary)',
                       marginBottom: '8px'
                     }}>
-                      {new Date(report.created_at).toLocaleString('ar-SA')}
+                      {new Date(report.created_at).toLocaleString('en-US')}
                     </div>
                   </div>
                   {getStatusBadge(report.status)}
@@ -351,7 +406,7 @@ export default function AdminReports() {
                         Content Type
                       </div>
                       <span style={{ fontWeight: '600' }}>
-                        {report.content_type === 'post' ? '📝 Post' : '💬 Comment'}
+                        {report.content_type === 'post' ? 'Post' : 'Comment'}
                       </span>
                     </div>
                   </div>
@@ -402,7 +457,7 @@ export default function AdminReports() {
                       onMouseEnter={(e) => e.currentTarget.style.background = '#dc2626'}
                       onMouseLeave={(e) => e.currentTarget.style.background = '#ef4444'}
                     >
-                      🗑️ Delete Content
+                      <AiOutlineDelete style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} /> Delete Content
                     </button>
 
                     <button
@@ -423,7 +478,7 @@ export default function AdminReports() {
                       onMouseEnter={(e) => e.currentTarget.style.background = '#d97706'}
                       onMouseLeave={(e) => e.currentTarget.style.background = '#f59e0b'}
                     >
-                      🚫 Ban User
+                      <AiOutlineClose style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} /> Ban User
                     </button>
 
                     <button
@@ -444,7 +499,7 @@ export default function AdminReports() {
                       onMouseEnter={(e) => e.currentTarget.style.background = '#059669'}
                       onMouseLeave={(e) => e.currentTarget.style.background = '#10b981'}
                     >
-                      ✅ Resolved
+                      <AiOutlineCheck style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} /> Resolved
                     </button>
 
                     <button
@@ -463,7 +518,7 @@ export default function AdminReports() {
                         transition: 'all 0.2s'
                       }}
                     >
-                      🚫 Dismiss Report
+                      <AiOutlineClose style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} /> Dismiss Report
                     </button>
                   </div>
                 )}

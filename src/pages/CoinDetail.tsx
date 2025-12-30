@@ -14,6 +14,18 @@ import { fetchMarketData } from "../services/cryptoApi";
 import { supabase } from "../services/supabase";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../hooks/useAuth";
+import {
+  AiOutlineStar as StarOutlined,
+  AiFillStar as StarFilled,
+  AiOutlineBell as BellOutlined,
+  AiOutlineBarChart as BarChartOutlined,
+  AiOutlineLineChart as LineChartOutlined,
+  AiOutlineRise as RiseOutlined,
+  AiOutlineFall as FallOutlined,
+  AiOutlineArrowLeft as ArrowLeftOutlined,
+} from 'react-icons/ai';
+import { BiComment as CommentOutlined } from 'react-icons/bi';
+import { BsNewspaper } from 'react-icons/bs';
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend);
 
@@ -72,7 +84,7 @@ export default function CoinDetail() {
 
   async function toggleFavorite() {
     if (!user) {
-      navigate('/auth');
+      navigate('/login');
       return;
     }
 
@@ -160,6 +172,15 @@ export default function CoinDetail() {
 
   return (
     <div className="space-y-6">
+      {/* Back Button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 px-4 py-2 bg-dark-card border border-dark-border rounded-lg text-gray-300 hover:text-primary hover:border-primary transition-all"
+      >
+        <ArrowLeftOutlined className="text-xl" />
+        <span>Back</span>
+      </button>
+
       {/* Header with Coin Info and Actions */}
       <div className="bg-dark-card border border-dark-border rounded-xl p-6 flex flex-wrap gap-6 items-center justify-between shadow-glow">
         <div className="flex items-center gap-4">
@@ -176,7 +197,7 @@ export default function CoinDetail() {
               <span className="text-gray-400 text-lg uppercase">
                 {coin.symbol}
               </span>
-              <span className="bg-primary bg-opacity-20 text-primary px-3 py-1 rounded-md text-sm font-medium">
+              <span className="bg-primary bg-opacity-10 text-white px-3 py-1 rounded-md text-sm font-medium border border-primary border-opacity-30">
                 Rank #{coin.market_cap_rank}
               </span>
             </div>
@@ -188,10 +209,14 @@ export default function CoinDetail() {
             <div className="text-3xl font-bold text-white mb-1">
               ${coin.current_price.toLocaleString()}
             </div>
-            <div className={`text-lg font-semibold ${
+            <div className={`text-lg font-semibold flex items-center gap-1 ${
               coin.price_change_percentage_24h > 0 ? 'text-green-400' : 'text-red-400'
             }`}>
-              {coin.price_change_percentage_24h > 0 ? "▲" : "▼"}{" "}
+              {coin.price_change_percentage_24h > 0 ? (
+                <RiseOutlined className="text-lg" />
+              ) : (
+                <FallOutlined className="text-lg" />
+              )}
               {Math.abs(coin.price_change_percentage_24h).toFixed(2)}%
             </div>
           </div>
@@ -199,21 +224,21 @@ export default function CoinDetail() {
           <div className="flex gap-2">
             <button
               onClick={toggleFavorite}
-              className={`px-4 py-3 rounded-lg text-xl transition-all ${
+              className={`px-4 py-3 rounded-lg transition-all flex items-center justify-center bg-dark-card border border-dark-border hover:border-primary ${
                 favorite
-                  ? 'bg-yellow-500 bg-opacity-20 text-yellow-400 hover:bg-opacity-30'
-                  : 'bg-dark-card border border-dark-border hover:border-primary'
+                  ? 'text-yellow-400'
+                  : 'text-gray-400 hover:text-primary'
               }`}
               title={favorite ? "Remove from watchlist" : "Add to watchlist"}
             >
-              {favorite ? "★" : "☆"}
+              {favorite ? <StarFilled className="text-2xl" /> : <StarOutlined className="text-2xl" />}
             </button>
             <button
               onClick={() => alert("Alert feature coming soon!")}
               className="px-4 py-3 rounded-lg text-xl bg-dark-card border border-dark-border hover:border-primary transition-all"
               title="Set price alert"
             >
-              🔔
+              <BellOutlined className="text-xl" />
             </button>
           </div>
         </div>
@@ -223,44 +248,48 @@ export default function CoinDetail() {
       <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
         <nav className="flex border-b border-dark-border overflow-x-auto">
           <button
-            className={`flex-1 px-6 py-4 font-medium transition-all whitespace-nowrap ${
+            className={`flex-1 px-6 py-4 font-medium transition-all whitespace-nowrap flex items-center justify-center gap-2 ${
               activeTab === "overview"
                 ? "bg-primary text-white"
                 : "text-gray-400 hover:text-white hover:bg-dark"
             }`}
             onClick={() => setActiveTab("overview")}
           >
-            📊 Overview
+            <BarChartOutlined className="text-lg" />
+            Overview
           </button>
           <button
-            className={`flex-1 px-6 py-4 font-medium transition-all whitespace-nowrap ${
+            className={`flex-1 px-6 py-4 font-medium transition-all whitespace-nowrap flex items-center justify-center gap-2 ${
               activeTab === "sentiment"
                 ? "bg-primary text-white"
                 : "text-gray-400 hover:text-white hover:bg-dark"
             }`}
             onClick={() => setActiveTab("sentiment")}
           >
-            💬 Social Sentiment
+            <CommentOutlined className="text-lg" />
+            Social Sentiment
           </button>
           <button
-            className={`flex-1 px-6 py-4 font-medium transition-all whitespace-nowrap ${
+            className={`flex-1 px-6 py-4 font-medium transition-all whitespace-nowrap flex items-center justify-center gap-2 ${
               activeTab === "prediction"
                 ? "bg-primary text-white"
                 : "text-gray-400 hover:text-white hover:bg-dark"
             }`}
             onClick={() => setActiveTab("prediction")}
           >
-            📈 Prediction
+            <LineChartOutlined className="text-lg" />
+            Prediction
           </button>
           <button
-            className={`flex-1 px-6 py-4 font-medium transition-all whitespace-nowrap ${
+            className={`flex-1 px-6 py-4 font-medium transition-all whitespace-nowrap flex items-center justify-center gap-2 ${
               activeTab === "news"
                 ? "bg-primary text-white"
                 : "text-gray-400 hover:text-white hover:bg-dark"
             }`}
             onClick={() => setActiveTab("news")}
           >
-            📰 News
+            <BsNewspaper className="text-lg" />
+            News
           </button>
         </nav>
 
@@ -329,7 +358,9 @@ export default function CoinDetail() {
 
           {activeTab === "sentiment" && (
             <div className="bg-dark border border-dark-border rounded-xl p-12 text-center">
-              <div className="text-6xl mb-4">💬</div>
+              <div className="flex justify-center mb-4">
+                <CommentOutlined className="text-6xl text-primary" />
+              </div>
               <h2 className="text-2xl font-bold text-white mb-3">Social Sentiment Analysis</h2>
               <p className="text-gray-400 max-w-2xl mx-auto">
                 Track social media sentiment, trending discussions, and community engagement for {coin.name}.
@@ -340,7 +371,9 @@ export default function CoinDetail() {
 
           {activeTab === "prediction" && (
             <div className="bg-dark border border-dark-border rounded-xl p-12 text-center">
-              <div className="text-6xl mb-4">📈</div>
+              <div className="flex justify-center mb-4">
+                <LineChartOutlined className="text-6xl text-primary" />
+              </div>
               <h2 className="text-2xl font-bold text-white mb-3">Price Prediction</h2>
               <p className="text-gray-400 max-w-2xl mx-auto">
                 AI-powered price predictions and forecasting models for {coin.name} based on historical data and market trends.
@@ -351,7 +384,9 @@ export default function CoinDetail() {
 
           {activeTab === "news" && (
             <div className="bg-dark border border-dark-border rounded-xl p-12 text-center">
-              <div className="text-6xl mb-4">📰</div>
+              <div className="flex justify-center mb-4">
+                <BsNewspaper className="text-6xl text-primary" />
+              </div>
               <h2 className="text-2xl font-bold text-white mb-3">Latest News</h2>
               <p className="text-gray-400 max-w-2xl mx-auto">
                 Stay updated with the latest news, announcements, and developments about {coin.name}.

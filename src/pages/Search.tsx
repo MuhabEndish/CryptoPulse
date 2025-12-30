@@ -4,6 +4,15 @@ import { supabase } from "../services/supabase";
 import { searchCryptos } from "../services/cryptoApi";
 import PostCard from "../components/PostCard";
 import LoadingSpinner from "../components/LoadingSpinner";
+import {
+  AiOutlineRise,
+  AiOutlineFall,
+  AiOutlineSearch,
+  AiOutlineMessage,
+  AiOutlineUser,
+  AiOutlineFileText
+} from "react-icons/ai";
+import { BiCoin } from "react-icons/bi";
 
 type SearchTab = "posts" | "users" | "cryptos";
 
@@ -239,7 +248,9 @@ export default function Search() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">🔍 Search Results</h1>
+        <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-2">
+          <AiOutlineSearch /> Search Results
+        </h1>
         <p className="text-gray-400">
           Searching for: <span className="text-primary font-semibold">{query || "..."}</span>
         </p>
@@ -255,7 +266,7 @@ export default function Search() {
               : "text-gray-400 hover:text-white"
           }`}
         >
-          💬 Posts ({posts.length})
+          <AiOutlineMessage style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} /> Posts ({posts.length})
         </button>
         <button
           onClick={() => setActiveTab("users")}
@@ -265,7 +276,7 @@ export default function Search() {
               : "text-gray-400 hover:text-white"
           }`}
         >
-          👤 Users ({users.length})
+          <AiOutlineUser style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} /> Users ({users.length})
         </button>
         <button
           onClick={() => setActiveTab("cryptos")}
@@ -275,7 +286,7 @@ export default function Search() {
               : "text-gray-400 hover:text-white"
           }`}
         >
-          🪙 Cryptos ({cryptos.length})
+          <BiCoin style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} /> Cryptos ({cryptos.length})
         </button>
       </div>
 
@@ -291,7 +302,7 @@ export default function Search() {
             <div className="space-y-4">
               {posts.length === 0 ? (
                 <div className="bg-dark-card border border-dark-border rounded-xl p-12 text-center">
-                  <p className="text-gray-400">No posts found 🔍</p>
+                  <p className="text-gray-400 flex items-center justify-center gap-2">No posts found <AiOutlineSearch /></p>
                 </div>
               ) : (
                 posts.map((post) => <PostCard key={post.id} post={post} onChange={searchPosts} />)
@@ -304,7 +315,7 @@ export default function Search() {
             <div className="space-y-4">
               {users.length === 0 ? (
                 <div className="bg-dark-card border border-dark-border rounded-xl p-12 text-center">
-                  <p className="text-gray-400">No users found 🔍</p>
+                  <p className="text-gray-400 flex items-center justify-center gap-2">No users found <AiOutlineSearch /></p>
                 </div>
               ) : (
                 users.map((user) => (
@@ -321,7 +332,7 @@ export default function Search() {
                           : "linear-gradient(135deg, var(--accent), #ec4899)",
                       }}
                     >
-                      {!user.avatar_url && "👤"}
+                      {!user.avatar_url && <AiOutlineUser />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-lg font-semibold text-white group-hover:text-primary transition-colors">
@@ -331,8 +342,8 @@ export default function Search() {
                         <p className="text-sm text-gray-400 mt-1 line-clamp-2">{user.bio}</p>
                       )}
                       <div className="flex gap-4 mt-2 text-sm text-gray-500">
-                        <span>📝 {user.posts_count} posts</span>
-                        <span>👥 {user.followers_count} followers</span>
+                        <span className="flex items-center gap-1"><AiOutlineFileText /> {user.posts_count} posts</span>
+                        <span className="flex items-center gap-1"><AiOutlineUser /> {user.followers_count} followers</span>
                       </div>
                     </div>
                   </Link>
@@ -346,7 +357,7 @@ export default function Search() {
             <div className="space-y-4">
               {cryptos.length === 0 ? (
                 <div className="bg-dark-card border border-dark-border rounded-xl p-12 text-center">
-                  <p className="text-gray-400">No cryptocurrencies found 🔍</p>
+                  <p className="text-gray-400 flex items-center justify-center gap-2">No cryptocurrencies found <AiOutlineSearch /></p>
                 </div>
               ) : (
                 cryptos.map((crypto) => (
@@ -370,10 +381,10 @@ export default function Search() {
                       <div className="text-lg font-bold text-white">
                         ${crypto.current_price.toLocaleString()}
                       </div>
-                      <div className={`text-sm font-medium mt-1 ${
+                      <div className={`text-sm font-medium mt-1 flex items-center gap-1 ${
                         crypto.price_change_percentage_24h >= 0 ? 'text-green-400' : 'text-red-400'
                       }`}>
-                        {crypto.price_change_percentage_24h >= 0 ? '↑' : '↓'}
+                        {crypto.price_change_percentage_24h >= 0 ? <AiOutlineRise /> : <AiOutlineFall />}
                         {Math.abs(crypto.price_change_percentage_24h).toFixed(2)}%
                       </div>
                     </div>

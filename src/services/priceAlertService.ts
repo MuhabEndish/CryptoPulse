@@ -118,7 +118,7 @@ export class PriceAlertService {
 
       // Show browser notification if supported
       if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(`${alert.coin_name} Price Alert! 🔔`, {
+        new Notification(`${alert.coin_name} Price Alert!`, {
           body: `${alert.coin_symbol.toUpperCase()} is now ${alert.condition} $${alert.target_price}. Current price: $${currentPrice.toLocaleString()}`,
           icon: "/favicon.ico",
           tag: alert.id,

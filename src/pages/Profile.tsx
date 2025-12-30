@@ -4,7 +4,16 @@ import { supabase, uploadAvatar } from "../services/supabase";
 import { useAuth } from "../hooks/useAuth";
 import PostCard from "../components/PostCard";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { AiOutlineFileText } from "react-icons/ai";
 import { useToast } from "../components/ToastProvider";
+import {
+  AiOutlineCamera,
+  AiOutlineClockCircle,
+  AiOutlineEdit,
+  AiOutlineSave,
+  AiOutlineClose,
+  AiOutlineLock
+} from "react-icons/ai";
 
 export default function Profile() {
   const { userId } = useParams();
@@ -139,7 +148,7 @@ export default function Profile() {
   useEffect(() => {
     if (currentUser === null && !userId) {
       // Only redirect if trying to view own profile and not authenticated
-      navigate("/auth");
+      navigate("/login");
     }
   }, [currentUser, userId, navigate]);
 
@@ -169,11 +178,24 @@ export default function Profile() {
           username: authData?.user?.email?.split("@")[0] || "User",
           bio: "",
           created_at: authData?.user?.created_at,
+          privacy_settings: { isProfilePublic: true, showActivity: true, showWatchlist: false, allowSocialInteractions: true }
         });
       } else {
         setProfile(userData);
         setUsername(userData.username || "");
         setBio(userData.bio || "");
+
+        // Check if profile is private and user is viewing someone else's profile
+        if (!isOwnProfile) {
+          const privacySettings = userData.privacy_settings || {};
+          const isProfilePublic = privacySettings.isProfilePublic ?? true;
+
+          if (!isProfilePublic) {
+            setProfile({ ...userData, isPrivate: true });
+            setLoading(false);
+            return;
+          }
+        }
       }
 
       // Fetch user posts
@@ -183,7 +205,7 @@ export default function Profile() {
           *,
           likes(id, user_id),
           comments(id),
-          profiles(username, avatar_url)
+          profiles(username, avatar_url, privacy_settings)
         `)
         .eq("user_id", profileUserId)
         .order("created_at", { ascending: false });
@@ -191,7 +213,17 @@ export default function Profile() {
       if (postsError) {
         console.error("Error loading posts:", postsError);
       } else {
-        const postsWithAuthor = (postsData || []).map((post) => ({
+        // Filter posts based on showActivity setting if viewing someone else's profile
+        let filteredPosts = postsData || [];
+        if (!isOwnProfile && userData) {
+          const privacySettings = userData.privacy_settings || {};
+          const showActivity = privacySettings.showActivity ?? true;
+          if (!showActivity) {
+            filteredPosts = [];
+          }
+        }
+
+        const postsWithAuthor = filteredPosts.map((post) => ({
           ...post,
           author_email: post.profiles?.username || userData?.username || "User",
           avatar_url: post.profiles?.avatar_url || userData?.avatar_url || null,
@@ -252,11 +284,11 @@ export default function Profile() {
         // Update database
         const { error } = await supabase
           .from("profiles")
-          .upsert({
-            id: currentUser.id,
+          .update({
             avatar_url: avatarUrl,
             updated_at: new Date().toISOString(),
-          });
+          })
+          .eq("id", currentUser.id);
 
         if (error) throw error;
 
@@ -320,87 +352,125 @@ export default function Profile() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Profile Header */}
+    <div
+      style={{
+        paddingBottom: "80px",
+        maxWidth: "1400px",
+        margin: "0 auto",
+        padding: "20px",
+      }}
+    >
+      {/* Two-Column Layout */}
       <div
-        className="card"
         style={{
-          marginTop: "20px",
-          textAlign: "center",
+          display: "grid",
+          gridTemplateColumns: "minmax(300px, 350px) 1fr",
+          gap: "40px",
+          alignItems: "start",
         }}
+        className="profile-layout"
       >
-        {/* Avatar */}
-        <div style={{ position: "relative", display: "inline-block", marginBottom: "20px" }}>
+        {/* Check if profile is private */}
+        {profile?.isPrivate ? (
+          <div className="col-span-2" style={{ gridColumn: "1 / -1" }}>
+            <div className="bg-dark-card border border-dark-border rounded-xl p-12 text-center">
+              <AiOutlineLock className="text-6xl text-gray-600 mx-auto mb-4" />
+              <h3 className="text-2xl font-semibold text-white mb-2">This Profile is Private</h3>
+              <p className="text-gray-400">This user has chosen to keep their profile private.</p>
+            </div>
+          </div>
+        ) : (
+          <>
+        <div
+          style={{
+            position: "sticky",
+            top: "80px",
+            alignSelf: "start",
+            height: "calc(100vh - 80px)",
+          }}
+        >
           <div
+            className="card"
             style={{
-              width: "clamp(80px, 15vw, 120px)",
-              height: "clamp(80px, 15vw, 120px)",
-              borderRadius: "50%",
-              background: profile.avatar_url
-                ? `url(${profile.avatar_url}) center/cover`
-                : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "clamp(2rem, 6vw, 3rem)",
-              fontWeight: "700",
-              color: "white",
-              boxShadow: "0 8px 20px rgba(139, 92, 246, 0.4)",
-              position: "relative",
+              textAlign: "center",
+              padding: "32px 24px",
             }}
           >
-            {!profile.avatar_url && (profile.username || profile.email || "U")[0].toUpperCase()}
-          </div>
+            {/* Avatar */}
+            <div style={{ position: "relative", display: "inline-block", marginBottom: "20px" }}>
+              <div
+                style={{
+                  width: "120px",
+                  height: "120px",
+                  borderRadius: "50%",
+                  background: profile.avatar_url
+                    ? `url(${profile.avatar_url}) center/cover`
+                    : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "3rem",
+                  fontWeight: "700",
+                  color: "white",
+                  boxShadow: "0 8px 20px rgba(139, 92, 246, 0.4)",
+                  margin: "0 auto",
+                }}
+              >
+                {!profile.avatar_url && (profile.username || profile.email || "U")[0].toUpperCase()}
+              </div>
 
-          {/* Change picture button (for own profile only) */}
-          {isOwnProfile && (
-            <label
-              htmlFor="avatar-upload"
-              style={{
-                position: "absolute",
-                bottom: "0",
-                right: "0",
-                background: "var(--accent)",
-                width: "36px",
-                height: "36px",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: uploadingAvatar ? "not-allowed" : "pointer",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-                transition: "all 0.3s ease",
-                opacity: uploadingAvatar ? 0.5 : 1,
-              }}
-              onMouseEnter={(e) => {
-                if (!uploadingAvatar) {
-                  e.currentTarget.style.transform = "scale(1.1)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "scale(1)";
-              }}
-            >
-              {uploadingAvatar ? "⏳" : "📷"}
-            </label>
-          )}
-          <input
-            id="avatar-upload"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleAvatarUpload}
-            disabled={uploadingAvatar}
-            style={{ display: "none" }}
-          />
-        </div>
+              {/* Change picture button (for own profile only) */}
+              {isOwnProfile && (
+                <label
+                  htmlFor="avatar-upload"
+                  style={{
+                    position: "absolute",
+                    bottom: "0",
+                    right: "calc(50% - 60px)",
+                    background: "var(--accent)",
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: uploadingAvatar ? "not-allowed" : "pointer",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                    transition: "all 0.3s ease",
+                    opacity: uploadingAvatar ? 0.5 : 1,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!uploadingAvatar) {
+                      e.currentTarget.style.transform = "scale(1.1)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "scale(1)";
+                  }}
+                >
+                  {uploadingAvatar ? (
+                    <AiOutlineClockCircle style={{ fontSize: "20px", color: "white" }} className="animate-spin" />
+                  ) : (
+                    <AiOutlineCamera style={{ fontSize: "20px", color: "white" }} />
+                  )}
+                </label>
+              )}
+              <input
+                id="avatar-upload"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleAvatarUpload}
+                disabled={uploadingAvatar}
+                style={{ display: "none" }}
+              />
+            </div>
 
-        {/* Username & Email */}
-        {!isEditing ? (
-          <>
+            {/* Username & Email */}
             <h2
               style={{
                 margin: "10px 0",
-                fontSize: "clamp(1.4rem, 4vw, 2rem)",
+                fontSize: "1.5rem",
+                fontWeight: "700",
               }}
             >
               {profile.username || profile.email?.split("@")[0] || "User"}
@@ -408,8 +478,8 @@ export default function Profile() {
             <p
               style={{
                 opacity: 0.6,
-                fontSize: "clamp(13px, 2.5vw, 15px)",
-                marginBottom: "10px",
+                fontSize: "14px",
+                marginBottom: "8px",
               }}
             >
               {profile.email}
@@ -419,255 +489,338 @@ export default function Profile() {
             {profile.bio && (
               <p
                 style={{
-                  marginTop: "15px",
-                  padding: "15px",
-                  background: "rgba(139, 92, 246, 0.1)",
-                  borderRadius: "8px",
-                  fontSize: "clamp(13px, 2.5vw, 15px)",
-                  lineHeight: "1.6",
+                  fontSize: "14px",
+                  opacity: 0.8,
+                  marginBottom: "20px",
+                  lineHeight: "1.5",
+                  fontStyle: "italic",
+                  color: "rgba(255, 255, 255, 0.9)",
                 }}
               >
                 {profile.bio}
               </p>
             )}
-          </>
-        ) : (
-          <div style={{ marginTop: "20px" }}>
-            {/* Edit Username */}
-            <input
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              maxLength={30}
-              style={{
-                width: "100%",
-                padding: "12px",
-                marginBottom: "15px",
-                background: "var(--card)",
-                color: "white",
-                border: "1px solid rgba(139, 92, 246, 0.3)",
-                borderRadius: "8px",
-                fontSize: "clamp(14px, 2.5vw, 16px)",
-              }}
-            />
 
-            {/* Edit Bio */}
-            <textarea
-              placeholder="Tell us about yourself..."
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              maxLength={150}
-              style={{
-                width: "100%",
-                padding: "12px",
-                marginBottom: "10px",
-                background: "var(--card)",
-                color: "white",
-                border: "1px solid rgba(139, 92, 246, 0.3)",
-                borderRadius: "8px",
-                fontSize: "clamp(13px, 2.5vw, 15px)",
-                minHeight: "80px",
-                resize: "vertical",
-              }}
-            />
+            {/* Stats - Compact Grid */}
             <div
               style={{
-                textAlign: "right",
-                fontSize: "clamp(12px, 2vw, 13px)",
-                opacity: 0.6,
-                marginBottom: "15px",
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gap: "16px",
+                marginBottom: "24px",
+                padding: "20px 0",
+                borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+                borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
               }}
             >
-              {bio.length}/150
+              <div style={{ textAlign: "center" }}>
+                <div
+                  style={{
+                    fontSize: "1.75rem",
+                    fontWeight: "700",
+                    color: "var(--accent)",
+                  }}
+                >
+                  {stats.postsCount}
+                </div>
+                <div
+                  style={{
+                    fontSize: "12px",
+                    opacity: 0.7,
+                    marginTop: "4px",
+                  }}
+                >
+                  Posts
+                </div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div
+                  style={{
+                    fontSize: "1.75rem",
+                    fontWeight: "700",
+                    color: "#10b981",
+                  }}
+                >
+                  {stats.likesReceived}
+                </div>
+                <div
+                  style={{
+                    fontSize: "12px",
+                    opacity: 0.7,
+                    marginTop: "4px",
+                  }}
+                >
+                  Likes
+                </div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div
+                  style={{
+                    fontSize: "1.75rem",
+                    fontWeight: "700",
+                    color: "#f59e0b",
+                  }}
+                >
+                  {stats.commentsReceived}
+                </div>
+                <div
+                  style={{
+                    fontSize: "12px",
+                    opacity: 0.7,
+                    marginTop: "4px",
+                  }}
+                >
+                  Comments
+                </div>
+              </div>
             </div>
-          </div>
-        )}
 
-        {/* Stats */}
-        <div
-          className="flex-responsive"
-          style={{
-            marginTop: "20px",
-            justifyContent: "center",
-            gap: "clamp(15px, 4vw, 30px)",
-          }}
-        >
-          <div style={{ textAlign: "center" }}>
-            <div
+            {/* Join Date */}
+            <p
               style={{
-                fontSize: "clamp(1.5rem, 4vw, 2rem)",
-                fontWeight: "700",
-                color: "var(--accent)",
+                fontSize: "13px",
+                opacity: 0.5,
+                marginBottom: "24px",
               }}
             >
-              {stats.postsCount}
-            </div>
-            <div
-              style={{
-                fontSize: "clamp(12px, 2vw, 14px)",
-                opacity: 0.7,
-              }}
-            >
-              Posts
-            </div>
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <div
-              style={{
-                fontSize: "clamp(1.5rem, 4vw, 2rem)",
-                fontWeight: "700",
-                color: "#10b981",
-              }}
-            >
-              {stats.likesReceived}
-            </div>
-            <div
-              style={{
-                fontSize: "clamp(12px, 2vw, 14px)",
-                opacity: 0.7,
-              }}
-            >
-              Likes
-            </div>
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <div
-              style={{
-                fontSize: "clamp(1.5rem, 4vw, 2rem)",
-                fontWeight: "700",
-                color: "#f59e0b",
-              }}
-            >
-              {stats.commentsReceived}
-            </div>
-            <div
-              style={{
-                fontSize: "clamp(12px, 2vw, 14px)",
-                opacity: 0.7,
-              }}
-            >
-              Comments
-            </div>
+              Joined {new Date(profile.created_at).toLocaleDateString()}
+            </p>
+
+            {/* Primary Actions - Full Width Buttons */}
+            {isOwnProfile && (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                }}
+              >
+                <button
+                  className="btn-touch"
+                  onClick={() => setIsEditing(true)}
+                  style={{
+                    width: "100%",
+                    padding: "12px 20px",
+                    borderRadius: "8px",
+                    background: "var(--accent)",
+                    color: "white",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    fontSize: "15px",
+                    fontWeight: "600",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <AiOutlineEdit /> Edit Profile
+                </button>
+                <button
+                  className="btn-touch"
+                  onClick={() => navigate("/privacy-security")}
+                  style={{
+                    width: "100%",
+                    padding: "12px 20px",
+                    borderRadius: "8px",
+                    background: "#6366f1",
+                    color: "white",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    fontSize: "15px",
+                    fontWeight: "600",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <AiOutlineLock /> Privacy & Security
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Edit Button */}
-        {isOwnProfile && (
-          <div
-            className="flex-responsive"
-            style={{
-              marginTop: "20px",
-              justifyContent: "center",
-              gap: "10px",
-            }}
-          >
-            {!isEditing ? (
-              <button
-                className="btn-touch"
-                onClick={() => setIsEditing(true)}
+        {/* ========== RIGHT PANEL: Content Feed ========== */}
+        <div>
+          {/* Edit Profile Form */}
+          {isEditing && isOwnProfile && (
+            <div className="card" style={{ marginBottom: "24px" }}>
+              <h3 style={{ marginBottom: "20px", fontSize: "1.25rem", fontWeight: "600" }}>Edit Profile</h3>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                {/* Username */}
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "8px",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      background: "var(--card)",
+                      color: "white",
+                      border: "1px solid rgba(139, 92, 246, 0.3)",
+                      borderRadius: "8px",
+                      fontSize: "15px",
+                    }}
+                  />
+                </div>
+
+                {/* Bio */}
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "8px",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Bio
+                  </label>
+                  <textarea
+                    placeholder="Tell us about yourself..."
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    maxLength={150}
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      background: "var(--card)",
+                      color: "white",
+                      border: "1px solid rgba(139, 92, 246, 0.3)",
+                      borderRadius: "8px",
+                      fontSize: "15px",
+                      minHeight: "100px",
+                      resize: "vertical",
+                    }}
+                  />
+                  <div
+                    style={{
+                      textAlign: "right",
+                      fontSize: "12px",
+                      opacity: 0.6,
+                      marginTop: "5px",
+                    }}
+                  >
+                    {bio.length}/150
+                  </div>
+                </div>
+
+                {/* Buttons */}
+                <div style={{ display: "flex", gap: "12px" }}>
+                  <button
+                    className="btn-touch"
+                    onClick={saveProfile}
+                    style={{
+                      flex: 1,
+                      padding: "12px",
+                      background: "#10b981",
+                      borderRadius: "8px",
+                      color: "white",
+                      fontWeight: "600",
+                      fontSize: "15px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <AiOutlineSave /> Save
+                  </button>
+                  <button
+                    className="btn-touch"
+                    onClick={() => {
+                      setIsEditing(false);
+                      setUsername(profile.username || "");
+                      setBio(profile.bio || "");
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "12px",
+                      background: "#6b7280",
+                      borderRadius: "8px",
+                      color: "white",
+                      fontWeight: "600",
+                      fontSize: "15px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <AiOutlineClose /> Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* User's Posts Section */}
+          <div>
+            <h3
+              style={{
+                marginBottom: "20px",
+                fontSize: "1.5rem",
+                fontWeight: "700",
+              }}
+            >
+              {isOwnProfile ? "Your Posts" : "Posts"}
+            </h3>
+
+            {posts.length === 0 ? (
+              <div
+                className="card"
                 style={{
-                  padding: "clamp(10px, 2.5vw, 12px) clamp(20px, 4vw, 30px)",
-                  background: "var(--accent)",
-                  borderRadius: "8px",
-                  color: "white",
-                  fontWeight: "600",
-                  fontSize: "clamp(14px, 2.5vw, 15px)",
+                  textAlign: "center",
+                  padding: "60px 40px",
                 }}
               >
-                ✏️ Edit Profile
-              </button>
+                <AiOutlineFileText style={{ fontSize: "48px", marginBottom: "16px", opacity: 0.3 }} className="mx-auto" />
+                <p style={{ fontSize: "16px", opacity: 0.6, marginBottom: "8px" }}>No posts yet</p>
+                {isOwnProfile && (
+                  <>
+                    <p style={{ fontSize: "14px", opacity: 0.5, marginBottom: "20px" }}>
+                      Share your thoughts with the community
+                    </p>
+                    <button
+                      className="btn-touch"
+                      onClick={() => navigate("/feed")}
+                      style={{
+                        padding: "12px 24px",
+                        background: "var(--accent)",
+                        borderRadius: "8px",
+                        color: "white",
+                        fontWeight: "600",
+                        fontSize: "15px",
+                      }}
+                    >
+                      Create your first post
+                    </button>
+                  </>
+                )}
+              </div>
             ) : (
-              <>
-                <button
-                  className="btn-touch"
-                  onClick={saveProfile}
-                  style={{
-                    padding: "clamp(10px, 2.5vw, 12px) clamp(20px, 4vw, 30px)",
-                    background: "#10b981",
-                    borderRadius: "8px",
-                    color: "white",
-                    fontWeight: "600",
-                    fontSize: "clamp(14px, 2.5vw, 15px)",
-                  }}
-                >
-                  💾 Save
-                </button>
-                <button
-                  className="btn-touch"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setUsername(profile.username || "");
-                    setBio(profile.bio || "");
-                  }}
-                  style={{
-                    padding: "clamp(10px, 2.5vw, 12px) clamp(20px, 4vw, 30px)",
-                    background: "#6b7280",
-                    borderRadius: "8px",
-                    color: "white",
-                    fontWeight: "600",
-                    fontSize: "clamp(14px, 2.5vw, 15px)",
-                  }}
-                >
-                  ✕ Cancel
-                </button>
-              </>
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                {posts.map((post) => (
+                  <PostCard key={post.id} post={post} onChange={loadProfile} />
+                ))}
+              </div>
             )}
           </div>
-        )}
-
-        {/* Join Date */}
-        <p
-          style={{
-            marginTop: "20px",
-            fontSize: "clamp(12px, 2vw, 13px)",
-            opacity: 0.5,
-          }}
-        >
-          Joined {new Date(profile.created_at).toLocaleDateString()}
-        </p>
-      </div>
-
-      {/* User's Posts */}
-      <div style={{ marginTop: "30px" }}>
-        <h3
-          style={{
-            marginBottom: "20px",
-            fontSize: "clamp(1.2rem, 3vw, 1.5rem)",
-          }}
-        >
-          {isOwnProfile ? "Your Posts" : "Posts"}
-        </h3>
-
-        {posts.length === 0 ? (
-          <div
-            className="card"
-            style={{
-              textAlign: "center",
-              padding: "40px",
-              opacity: 0.6,
-            }}
-          >
-            <p>No posts yet</p>
-            {isOwnProfile && (
-              <button
-                onClick={() => navigate("/feed")}
-                style={{
-                  marginTop: "15px",
-                  padding: "10px 20px",
-                  background: "var(--accent)",
-                  borderRadius: "8px",
-                  color: "white",
-                }}
-              >
-                Create your first post
-              </button>
-            )}
-          </div>
-        ) : (
-          posts.map((post) => (
-            <PostCard key={post.id} post={post} onChange={loadProfile} />
-          ))
+        </div>
+        </>
         )}
       </div>
     </div>

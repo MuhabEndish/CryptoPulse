@@ -1,8 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../services/supabase";
 import { useAuth } from "../hooks/useAuth";
+import { useToast } from "./ToastProvider";
 import ReportModal from "./ReportModal";
+import ConfirmModal from "./ConfirmModal";
+import {
+  AiOutlineEdit as EditOutlined,
+  AiOutlineDelete as DeleteOutlined,
+  AiOutlineWarning as WarningOutlined,
+  AiOutlineEllipsis as EllipsisOutlined
+} from 'react-icons/ai';
 
 type CommentCardProps = {
   comment: any;
@@ -11,128 +19,181 @@ type CommentCardProps = {
 
 export default function CommentCard({ comment, onDelete }: CommentCardProps) {
   const user = useAuth();
+  const { showToast } = useToast();
   const isOwner = user?.id === comment.user_id;
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(comment.content);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    }
+    if (showMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showMenu]);
 
   async function handleDelete() {
-    if (!window.confirm("Are you sure you want to delete this comment?")) return;
+    const { error } = await supabase.from("comments").delete().eq("id", comment.id);
+    if (!error) {
+      showToast("Comment deleted successfully!", "success");
+      onDelete();
+    } else {
+      showToast("Failed to delete comment. Please try again.", "error");
+    }
+  }
 
-    await supabase.from("comments").delete().eq("id", comment.id);
-    onDelete();
+  async function handleEdit() {
+    if (!editContent.trim()) return;
+
+    const { error } = await supabase
+      .from("comments")
+      .update({
+        content: editContent,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", comment.id);
+
+    if (!error) {
+      comment.content = editContent;
+      comment.updated_at = new Date().toISOString();
+      setIsEditing(false);
+    }
+  }
+
+  function handleCancelEdit() {
+    setEditContent(comment.content);
+    setIsEditing(false);
   }
 
   return (
-    <div
-      style={{
-        background: "var(--card)",
-        padding: "12px 16px",
-        borderRadius: "8px",
-        marginBottom: "10px",
-        border: "1px solid rgba(139, 92, 246, 0.2)",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "6px",
-        }}
-      >
+    <div className="bg-dark-card border border-dark-border rounded-lg p-4 mb-3">
+      <div className="flex justify-between items-start mb-2">
         <Link
           to={`/profile/${comment.user_id}`}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            textDecoration: "none",
-            color: "inherit",
-          }}
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
           <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs bg-gradient-to-br from-primary to-pink-500 flex-shrink-0"
             style={{
-              width: "28px",
-              height: "28px",
-              borderRadius: "50%",
-              background: comment.avatar_url
-                ? `url(${comment.avatar_url})`
-                : "linear-gradient(135deg, var(--accent), #ec4899)",
+              backgroundImage: comment.avatar_url ? `url(${comment.avatar_url})` : undefined,
               backgroundSize: "cover",
               backgroundPosition: "center",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              fontWeight: "bold",
-              fontSize: "0.75rem",
-              flexShrink: 0,
             }}
           >
             {!comment.avatar_url && (comment.author_email?.[0]?.toUpperCase() || "U")}
           </div>
-          <div style={{ fontSize: "0.85rem", fontWeight: 600, opacity: 0.9 }}>
+          <div className="text-sm font-semibold text-white opacity-90">
             {comment.author_email}
           </div>
         </Link>
 
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          {isOwner && (
+        {/* 3-Dot Menu */}
+        {user && (
+          <div className="relative" ref={menuRef}>
             <button
-              onClick={handleDelete}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "#ef4444",
-                cursor: "pointer",
-                fontSize: "0.85rem",
-                padding: "4px 8px",
-              }}
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-1 hover:bg-dark rounded-lg transition-all text-gray-400 hover:text-white"
             >
-              Delete
+              <EllipsisOutlined className="text-lg" />
             </button>
-          )}
 
-          {/* زر الإبلاغ - Report Button */}
-          {!isOwner && user && (
-            <button
-              onClick={() => setShowReportModal(true)}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "#aaa",
-                cursor: "pointer",
-                fontSize: "14px",
-                padding: "4px 8px",
-                borderRadius: "4px",
-                transition: "all 0.2s"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "#ef4444";
-                e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "#aaa";
-                e.currentTarget.style.background = "transparent";
-              }}
-              title="الإبلاغ عن هذا التعليق"
-            >
-              🚨
-            </button>
-          )}
-        </div>
+            {showMenu && (
+              <div className="absolute right-0 mt-2 w-32 bg-dark-card border border-dark-border rounded-lg shadow-glow-lg overflow-hidden z-10">
+                {isOwner ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        setIsEditing(true);
+                      }}
+                      className="w-full px-4 py-2 text-left text-blue-400 hover:bg-dark transition-colors flex items-center gap-2"
+                    >
+                      <EditOutlined className="text-base" /> Edit
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        setShowDeleteConfirm(true);
+                      }}
+                      className="w-full px-4 py-2 text-left text-red-400 hover:bg-dark transition-colors flex items-center gap-2"
+                    >
+                      <DeleteOutlined className="text-base" /> Delete
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      setShowReportModal(true);
+                    }}
+                    className="w-full px-4 py-2 text-left text-yellow-400 hover:bg-dark transition-colors flex items-center gap-2"
+                  >
+                    <WarningOutlined className="text-base" /> Report
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      <p style={{ margin: 0, fontSize: "0.95rem", opacity: 0.95 }}>
-        {comment.content}
-      </p>
+      {isEditing ? (
+        <div className="space-y-2">
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            className="w-full bg-dark border border-dark-border rounded-lg p-3 text-white text-sm focus:outline-none focus:border-primary resize-none"
+            rows={3}
+            autoFocus
+          />
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={handleCancelEdit}
+              className="px-4 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-dark rounded-lg transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleEdit}
+              disabled={!editContent.trim()}
+              className="px-4 py-1.5 text-sm bg-primary hover:bg-primary/80 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-white text-sm leading-relaxed mb-2">
+          {comment.content}
+        </p>
+      )}
 
-      <div style={{ fontSize: "0.75rem", opacity: 0.6, marginTop: "6px" }}>
+      <div className="text-xs text-gray-500">
         {new Date(comment.created_at).toLocaleString("en-US", {
           month: "short",
           day: "numeric",
           hour: "2-digit",
           minute: "2-digit",
         })}
+        {comment.updated_at && comment.updated_at !== comment.created_at && (
+          <span className="text-gray-400 ml-2">
+            • Edited {new Date(comment.updated_at).toLocaleString("en-US", {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+        )}
       </div>
 
       {/* Report Modal */}
@@ -142,6 +203,18 @@ export default function CommentCard({ comment, onDelete }: CommentCardProps) {
         contentType="comment"
         contentId={comment.id}
         reportedUserId={comment.user_id}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="Delete Comment"
+        message="Are you sure you want to delete this comment? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
       />
     </div>
   );

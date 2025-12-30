@@ -10,6 +10,16 @@ import {
 } from '../../services/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import AdminHeader from '../../components/AdminHeader';
+import {
+  AiOutlineArrowLeft,
+  AiOutlineTeam,
+  AiOutlineSearch,
+  AiOutlineCheck,
+  AiOutlineClose,
+  AiOutlineDelete,
+  AiOutlineLogout,
+  AiOutlineStop
+} from 'react-icons/ai';
 
 interface User {
   id: string;
@@ -81,10 +91,10 @@ export default function AdminUsers() {
     );
 
     if (result.success) {
-      alert('✅ User banned successfully');
+      alert('[Success] User banned successfully');
       loadUsers();
     } else {
-      alert('❌ ' + (result.error || 'An error occurred during the ban'));
+      alert('[Error] ' + (result.error || 'An error occurred during the ban'));
     }
   }
 
@@ -93,10 +103,10 @@ export default function AdminUsers() {
 
     const result = await unbanUser(userId);
     if (result.success) {
-      alert('✅ User unbanned successfully');
+      alert('[Success] User unbanned successfully');
       loadUsers();
     } else {
-      alert('❌ An error occurred');
+      alert('[Error] An error occurred');
     }
   }
 
@@ -107,20 +117,20 @@ export default function AdminUsers() {
     }
 
     const confirmation = prompt(
-      `⚠️ Warning: Delete user permanently!\n\nThis will delete:\n- User account\n- All their posts\n- All their comments\n- All their likes\n\nTo confirm deletion, type the username: ${username}`
+      `[Warning] Delete user permanently!\n\nThis will delete:\n- User account\n- All their posts\n- All their comments\n- All their likes\n\nTo confirm deletion, type the username: ${username}`
     );
 
     if (confirmation !== username) {
-      alert('❌ Operation cancelled');
+      alert('[Error] Operation cancelled');
       return;
     }
 
     const result = await deleteUser(userId);
     if (result.success) {
-      alert('✅ User deleted permanently');
+      alert('[Success] User deleted permanently');
       loadUsers();
     } else {
-      alert('❌ An error occurred during deletion');
+      alert('[Error] An error occurred during deletion');
     }
   }
 
@@ -158,9 +168,9 @@ export default function AdminUsers() {
                 cursor: 'pointer'
               }}
             >
-              ←
+              <AiOutlineArrowLeft />
             </button>
-            <span style={{ fontSize: '32px' }}>👥</span>
+            <AiOutlineTeam style={{ fontSize: '32px' }} />
             <h1 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>
               User Management
             </h1>
@@ -178,7 +188,7 @@ export default function AdminUsers() {
               color: '#c33'
             }}
           >
-            🚺 Logout
+            <AiOutlineLogout style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} /> Logout
           </button>
         </div>
       </header>
@@ -194,7 +204,7 @@ export default function AdminUsers() {
           }}>
             <input
               type="text"
-              placeholder="🔍 Search user (name or email)..."
+              placeholder="Search user (name or email)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
@@ -227,7 +237,7 @@ export default function AdminUsers() {
                   transition: 'all 0.2s'
                 }}
               >
-                {f === 'all' ? '👥 All' : f === 'active' ? '✅ Active' : '🚫 Banned'}
+                {f === 'all' ? 'All' : f === 'active' ? 'Active' : 'Banned'}
               </button>
             ))}
           </div>
@@ -293,7 +303,7 @@ export default function AdminUsers() {
             background: 'var(--card)',
             borderRadius: '12px'
           }}>
-            <div style={{ fontSize: '64px', marginBottom: '20px' }}>🔍</div>
+            <AiOutlineSearch style={{ fontSize: '64px', marginBottom: '20px' }} />
             <h3 style={{ fontSize: '20px', color: 'var(--text)' }}>
               No users found
             </h3>
@@ -404,7 +414,7 @@ export default function AdminUsers() {
                           {user.posts?.[0]?.count || 0}
                         </td>
                         <td style={{ padding: '16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                          {new Date(user.created_at).toLocaleDateString('ar-SA')}
+                          {new Date(user.created_at).toLocaleDateString('en-US')}
                         </td>
                         <td style={{ padding: '16px', textAlign: 'center' }}>
                           {isBanned ? (
@@ -419,7 +429,7 @@ export default function AdminUsers() {
                                 display: 'inline-block',
                                 marginBottom: '4px'
                               }}>
-                                🚫 Banned {banInfo?.ban_type === 'permanent' ? 'Permanently' : 'Temporarily'}
+                                <AiOutlineClose style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }} /> Banned {banInfo?.ban_type === 'permanent' ? 'Permanently' : 'Temporarily'}
                               </span>
                               {banInfo && (
                                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
@@ -436,7 +446,7 @@ export default function AdminUsers() {
                               fontSize: '12px',
                               fontWeight: '600'
                             }}>
-                              ✅ Active
+                              <AiOutlineCheck style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }} /> Active
                             </span>
                           )}
                         </td>
@@ -462,7 +472,7 @@ export default function AdminUsers() {
                                   whiteSpace: 'nowrap'
                                 }}
                               >
-                                ✅ Unban
+                                <AiOutlineCheck style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }} /> Unban
                               </button>
                             ) : (
                               <button
@@ -479,7 +489,7 @@ export default function AdminUsers() {
                                   whiteSpace: 'nowrap'
                                 }}
                               >
-                                🚫 Ban
+                                <AiOutlineStop style={{ display: 'inline-block', marginRight: '6px' }} /> Ban
                               </button>
                             )}
 
@@ -498,7 +508,7 @@ export default function AdminUsers() {
                                   whiteSpace: 'nowrap'
                                 }}
                               >
-                                🗑️ Delete
+                                <AiOutlineDelete style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }} /> Delete
                               </button>
                             )}
                           </div>

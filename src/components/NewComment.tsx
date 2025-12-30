@@ -19,12 +19,12 @@ export default function NewComment({ postId, onCommentAdded }: NewCommentProps) 
     e.preventDefault();
     if (!content.trim() || !user || isSubmitting) return;
 
-    // 🚫 التحقق من حظر المستخدم
+    // 🚫 Check if user is banned
     const banStatus = await checkIfUserBanned();
     if (banStatus.isBanned) {
       const message = banStatus.banType === 'permanent'
-        ? `❌ تم حظرك نهائياً من المنصة.\n📋 السبب: ${banStatus.reason}`
-        : `❌ تم حظرك مؤقتاً حتى ${new Date(banStatus.bannedUntil!).toLocaleDateString('ar-SA')}.\n📋 السبب: ${banStatus.reason}`;
+        ? `❌ You have been permanently banned from the platform.\n📋 Reason: ${banStatus.reason}`
+        : `❌ You have been temporarily banned until ${new Date(banStatus.bannedUntil!).toLocaleDateString('en-US')}.\n📋 Reason: ${banStatus.reason}`;
       showToast(message, "error");
       return;
     }
@@ -51,11 +51,11 @@ export default function NewComment({ postId, onCommentAdded }: NewCommentProps) 
       if (error) throw error;
 
       setContent("");
-      showToast("تم إضافة التعليق بنجاح!", "success");
+      showToast("Comment added successfully!", "success");
       onCommentAdded();
     } catch (error) {
       console.error("Error adding comment:", error);
-      showToast("فشل في إضافة التعليق. حاول مرة أخرى.", "error");
+      showToast("Failed to add comment. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }

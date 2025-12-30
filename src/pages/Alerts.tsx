@@ -1,9 +1,18 @@
 import React, { useEffect, useState } from "react";
+import ReactDOM from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../services/supabase";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useToast } from "../components/ToastProvider";
+import {
+  AiOutlineRise,
+  AiOutlineFall,
+  AiOutlineBell,
+  AiOutlineCheck,
+  AiOutlineBulb,
+  AiOutlineMuted
+} from "react-icons/ai";
 
 interface PriceAlert {
   id: string;
@@ -23,11 +32,12 @@ export default function Alerts() {
   const { showToast } = useToast();
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
     if (user === undefined) return;
     if (!user) {
-      navigate("/auth");
+      navigate("/login");
       return;
     }
     loadAlerts();
@@ -68,8 +78,6 @@ export default function Alerts() {
   }
 
   async function deleteAlert(alertId: string) {
-    if (!confirm("Are you sure you want to delete this alert?")) return;
-
     try {
       const { error } = await supabase
         .from("price_alerts")
@@ -78,6 +86,7 @@ export default function Alerts() {
 
       if (error) throw error;
       showToast("Alert deleted", "success");
+      setDeleteConfirm(null);
       loadAlerts();
     } catch (error) {
       console.error("Error deleting alert:", error);
@@ -94,7 +103,7 @@ export default function Alerts() {
   }
 
   if (!user) {
-    navigate("/auth");
+    navigate("/login");
     return null;
   }
 
@@ -111,16 +120,16 @@ export default function Alerts() {
       {/* Alerts List */}
       {alerts.length === 0 ? (
         <div className="bg-dark-card border border-dark-border rounded-xl p-12 text-center">
-          <div className="text-6xl mb-4">🔔</div>
+          <AiOutlineBell className="text-6xl mb-4 mx-auto text-gray-400" />
           <h3 className="text-xl font-semibold text-white mb-2">No alerts yet</h3>
           <p className="text-gray-400 mb-6">
-            Set price alerts from the dashboard to get notified when cryptocurrencies reach your target price
+            Set price alerts from the market to get notified when cryptocurrencies reach your target price
           </p>
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/market")}
             className="px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-all"
           >
-            Go to Dashboard
+            Go to Market
           </button>
         </div>
       ) : (
@@ -146,8 +155,8 @@ export default function Alerts() {
                     </span>
                   </div>
                   {alert.triggered_at && (
-                    <span className="text-xs text-green-400">
-                      ✓ Triggered
+                    <span className="text-xs text-green-400 flex items-center gap-1">
+                      <AiOutlineCheck /> Triggered
                     </span>
                   )}
                 </div>
@@ -160,7 +169,7 @@ export default function Alerts() {
                   }`}
                   title={alert.is_active ? "Deactivate" : "Activate"}
                 >
-                  {alert.is_active ? "🔔" : "🔕"}
+                  {alert.is_active ? <AiOutlineBell /> : <AiOutlineMuted />}
                 </button>
               </div>
 
@@ -168,10 +177,10 @@ export default function Alerts() {
               <div className="space-y-3 mb-4">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400 text-sm">Condition:</span>
-                  <span className={`font-semibold ${
+                  <span className={`font-semibold flex items-center gap-1 ${
                     alert.condition === "above" ? "text-green-400" : "text-red-400"
                   }`}>
-                    {alert.condition === "above" ? "↑ Above" : "↓ Below"}
+                    {alert.condition === "above" ? <><AiOutlineRise /> Above</> : <><AiOutlineFall /> Below</>}
                   </span>
                 </div>
 
@@ -199,7 +208,7 @@ export default function Alerts() {
                   View Coin
                 </button>
                 <button
-                  onClick={() => deleteAlert(alert.id)}
+                  onClick={() => setDeleteConfirm(alert.id)}
                   className="py-2 px-4 bg-red-500/10 text-red-400 rounded-lg text-sm font-medium hover:bg-red-500/20 transition-colors"
                 >
                   Delete
@@ -214,7 +223,7 @@ export default function Alerts() {
       {alerts.length > 0 && (
         <div className="bg-dark-card border border-dark-border rounded-xl p-4">
           <div className="flex items-start gap-3">
-            <span className="text-2xl">💡</span>
+            <AiOutlineBulb className="text-2xl text-yellow-400 flex-shrink-0" />
             <div>
               <h4 className="text-white font-semibold mb-1">How it works</h4>
               <p className="text-gray-400 text-sm">
@@ -224,6 +233,55 @@ export default function Alerts() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && ReactDOM.createPortal(
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 overflow-y-auto"
+          style={{ zIndex: 99999 }}
+          onClick={() => setDeleteConfirm(null)}
+        >
+          <div
+            className="bg-dark-card border border-red-500/30 rounded-xl max-w-md w-full my-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-dark-border">
+              <h2 className="text-xl font-bold text-white">Delete Alert</h2>
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="text-gray-400 hover:text-white transition-colors text-3xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <p className="text-gray-300 mb-6">
+                Are you sure you want to delete this price alert? This action cannot be undone.
+              </p>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  className="flex-1 py-3 px-4 bg-dark text-gray-400 rounded-lg font-medium hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deleteAlert(deleteConfirm)}
+                  className="flex-1 py-3 px-4 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-all"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

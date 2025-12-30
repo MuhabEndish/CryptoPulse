@@ -4,6 +4,7 @@ import { supabase } from "../services/supabase";
 import { fetchMarketData } from "../services/cryptoApi";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useNavigate } from "react-router-dom";
+import { AiOutlineRise, AiOutlineFall, AiOutlineStar, AiOutlineArrowLeft } from "react-icons/ai";
 
 export default function Favorites() {
   const user = useAuth();
@@ -13,6 +14,7 @@ export default function Favorites() {
 
   async function loadFavorites() {
     if (!user) return;
+
     const { data } = await supabase
       .from("favorite_cryptos")
       .select("coin_id")
@@ -35,8 +37,17 @@ export default function Favorites() {
 
   const navigate = useNavigate();
 
+  // Show loading state while checking authentication
+  if (user === undefined) {
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner size="medium" message="Loading..." />
+      </div>
+    );
+  }
+
   if (!user) {
-    navigate('/auth');
+    navigate('/login');
     return null;
   }
 
@@ -45,7 +56,16 @@ export default function Favorites() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">⭐ Watchlist</h1>
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-4"
+        >
+          <AiOutlineArrowLeft className="text-xl" />
+          <span>Back</span>
+        </button>
+        <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-2">
+          <AiOutlineStar className="text-yellow-400" /> Watchlist
+        </h1>
         <p className="text-gray-400">Your favorite cryptocurrencies</p>
       </div>
 
@@ -85,10 +105,10 @@ export default function Favorites() {
                 <div className="font-semibold text-white">
                   ${coin.current_price.toLocaleString()}
                 </div>
-                <div className={`text-sm font-medium ${
+                <div className={`text-sm font-medium flex items-center gap-1 ${
                   coin.price_change_percentage_24h > 0 ? 'text-green-400' : 'text-red-400'
                 }`}>
-                  {coin.price_change_percentage_24h > 0 ? '↑' : '↓'}
+                  {coin.price_change_percentage_24h > 0 ? <AiOutlineRise /> : <AiOutlineFall />}
                   {Math.abs(coin.price_change_percentage_24h).toFixed(2)}%
                 </div>
               </div>

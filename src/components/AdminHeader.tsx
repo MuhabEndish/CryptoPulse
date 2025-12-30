@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
+import {
+  AiOutlineUser,
+  AiOutlineSun,
+  AiOutlineMoon,
+  AiOutlineDashboard,
+  AiOutlineHome,
+  AiOutlineLogout
+} from 'react-icons/ai';
 
 interface AdminHeaderProps {
   title: string;
@@ -43,7 +51,17 @@ export default function AdminHeader({ title, adminRole }: AdminHeaderProps) {
       boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-        <span style={{ fontSize: '32px' }}>👨‍💼</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '10px' }}>
+          <img
+            src="/images/CryptoPulseLogo.png"
+            alt="CryptoPulse Logo"
+            style={{ height: '32px', width: 'auto' }}
+          />
+          <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text)' }}>
+            CryptoPulse
+          </span>
+        </div>
+        <AiOutlineUser style={{ fontSize: '32px', color: 'var(--accent)' }} />
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>
             {title}
@@ -80,7 +98,7 @@ export default function AdminHeader({ title, adminRole }: AdminHeaderProps) {
           }}
           title={darkMode ? "Light Mode" : "Dark Mode"}
         >
-          {darkMode ? "☀️" : "🌙"}
+          {darkMode ? <AiOutlineSun style={{ fontSize: '20px' }} /> : <AiOutlineMoon style={{ fontSize: '20px' }} />}
         </button>
         <button
           onClick={() => navigate('/admin/dashboard')}
@@ -96,7 +114,7 @@ export default function AdminHeader({ title, adminRole }: AdminHeaderProps) {
             transition: 'all 0.2s'
           }}
         >
-          📊 Dashboard
+          <AiOutlineDashboard style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} /> Dashboard
         </button>
         <button
           onClick={() => navigate('/')}
@@ -112,7 +130,7 @@ export default function AdminHeader({ title, adminRole }: AdminHeaderProps) {
             transition: 'all 0.2s'
           }}
         >
-          🏠 Home
+          <AiOutlineHome style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} /> Home
         </button>
         <button
           onClick={handleLogout}
@@ -128,7 +146,7 @@ export default function AdminHeader({ title, adminRole }: AdminHeaderProps) {
             transition: 'all 0.2s'
           }}
         >
-          🚪 Logout
+          <AiOutlineLogout style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} /> Logout
         </button>
       </div>
     </header>
