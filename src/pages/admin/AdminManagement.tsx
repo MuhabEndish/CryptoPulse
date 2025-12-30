@@ -9,6 +9,14 @@ import {
 } from '../../services/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import AdminHeader from '../../components/AdminHeader';
+import {
+  AiOutlinePlus,
+  AiOutlineDelete,
+  AiOutlineBulb,
+  AiOutlineArrowLeft,
+  AiOutlineTeam,
+  AiOutlineLogout
+} from 'react-icons/ai';
 
 interface Admin {
   id: string;
@@ -77,7 +85,7 @@ export default function AdminManagement() {
     async function init() {
       const { isAdmin, adminData } = await checkAdminStatus();
       if (!isAdmin || adminData?.role !== 'super_admin') {
-        alert('❌ This page is only available to Super Admins');
+        alert('[Error] This page is only available to Super Admins');
         navigate('/admin/dashboard');
         return;
       }
@@ -98,7 +106,7 @@ export default function AdminManagement() {
 
   async function handleAddAdmin() {
     if (!newAdminEmail.trim()) {
-      alert('❌ Please enter the email address');
+      alert('[Error] Please enter the email address');
       return;
     }
 
@@ -109,7 +117,7 @@ export default function AdminManagement() {
     const result = await addAdmin(newAdminEmail, selectedRole, permissions);
 
     if (result.success) {
-      alert('✅ Admin added successfully');
+      alert('[Success] Admin added successfully');
       setShowAddModal(false);
       setNewAdminEmail('');
       setSelectedRole('moderator');
@@ -128,7 +136,7 @@ export default function AdminManagement() {
     );
 
     if (result.success) {
-      alert('✅ Permissions updated successfully');
+      alert('[Success] Permissions updated successfully');
       setSelectedAdmin(null);
       loadAdmins();
     } else {
@@ -142,7 +150,7 @@ export default function AdminManagement() {
     const result = await deleteAdmin(adminUserId);
 
     if (result.success) {
-      alert('✅ Admin deleted successfully');
+      alert('[Success] Admin deleted successfully');
       loadAdmins();
     } else {
       alert(`❌ ${result.error}`);
@@ -177,7 +185,59 @@ export default function AdminManagement() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <AdminHeader title="Admin Management" adminRole="super_admin" />
+      <header
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          background: 'var(--card)',
+          borderBottom: '1px solid var(--border)',
+          padding: '15px 30px',
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <button
+              onClick={() => navigate('/admin/dashboard')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--text)',
+                fontSize: '24px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '5px'
+              }}
+              title="Back to Dashboard"
+            >
+              <AiOutlineArrowLeft />
+            </button>
+            <AiOutlineTeam style={{ fontSize: '32px', color: 'var(--accent)' }} />
+            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>Admin Management</h1>
+          </div>
+          <button
+            onClick={() => {
+              supabase.auth.signOut().then(() => navigate('/admin/login'));
+            }}
+            style={{
+              padding: '10px 20px',
+              background: 'var(--danger)',
+              borderRadius: '8px',
+              color: 'white',
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <AiOutlineLogout /> Logout
+          </button>
+        </div>
+      </header>
 
       <main style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
@@ -196,7 +256,7 @@ export default function AdminManagement() {
               border: 'none'
             }}
           >
-            ➕ Add New Admin
+            <AiOutlinePlus style={{ display: 'inline-block', marginRight: '6px' }} /> Add New Admin
           </button>
         </div>
 
@@ -270,7 +330,7 @@ export default function AdminManagement() {
                     </div>
                   </td>
                   <td style={{ padding: '16px', fontSize: '14px', opacity: 0.7 }}>
-                    {new Date(admin.created_at).toLocaleDateString('ar-SA')}
+                    {new Date(admin.created_at).toLocaleDateString('en-US')}
                   </td>
                   <td style={{ padding: '16px', textAlign: 'center' }}>
                     {admin.role !== 'super_admin' && (
@@ -286,7 +346,7 @@ export default function AdminManagement() {
                           fontSize: '14px'
                         }}
                       >
-                        🗑️ Delete
+                        <AiOutlineDelete style={{ display: 'inline-block', marginRight: '6px' }} /> Delete
                       </button>
                     )}
                   </td>
@@ -320,7 +380,7 @@ export default function AdminManagement() {
             maxHeight: '90vh',
             overflow: 'auto'
           }}>
-            <h2 style={{ marginBottom: '20px' }}>➕ Add New Admin</h2>
+            <h2 style={{ marginBottom: '20px' }}><AiOutlinePlus style={{ display: 'inline-block', marginRight: '6px' }} /> Add New Admin</h2>
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
@@ -341,7 +401,7 @@ export default function AdminManagement() {
                 }}
               />
               <div style={{ fontSize: '12px', opacity: 0.6, marginTop: '6px' }}>
-                💡 Enter the email address of the user you want to add as admin
+                <AiOutlineBulb style={{ display: 'inline-block', marginRight: '4px' }} /> Enter the email address of the user you want to add as admin
               </div>
             </div>
 

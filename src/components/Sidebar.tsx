@@ -1,5 +1,14 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
+import {
+  AiOutlineDashboard,
+  AiOutlineMessage,
+  AiOutlineStar,
+  AiOutlineSearch,
+  AiOutlineSetting,
+  AiOutlineMenu
+} from 'react-icons/ai';
+import { SiBitcoin } from 'react-icons/si';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -10,11 +19,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
   const { pathname } = useLocation();
 
   const navItems = [
-    { icon: "📊", label: "Dashboard", path: "/" },
-    { icon: "�", label: "Social", path: "/feed" },
-    { icon: "⭐", label: "Watchlist", path: "/favorites" },
-    { icon: "🔍", label: "Search", path: "/search" },
-    { icon: "👤", label: "Profile", path: "/profile" },
+    { icon: <AiOutlineDashboard />, label: "Dashboard", path: "/" },
+    { icon: <AiOutlineMessage />, label: "Social", path: "/feed" },
+    { icon: <AiOutlineStar />, label: "Watchlist", path: "/favorites" },
+    { icon: <AiOutlineSearch />, label: "Search", path: "/search" },
   ];
 
   const isActive = (path: string) => {
@@ -34,11 +42,11 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
         <div className="p-6 border-b border-dark-border flex items-center justify-between">
           {!isCollapsed && (
             <div className="flex items-center gap-2">
-              <span className="text-2xl">₿</span>
+              <SiBitcoin className="text-2xl text-orange-500" />
               <span className="font-bold text-lg text-white">CryptoTracker</span>
             </div>
           )}
-          {isCollapsed && <span className="text-2xl mx-auto">₿</span>}
+          {isCollapsed && <SiBitcoin className="text-2xl mx-auto text-orange-500" />}
 
 
         </div>
@@ -48,7 +56,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="w-full flex items-center justify-start gap-2 px-4 py-2 text-gray-400 hover:text-white transition-colors"
           >
-            <span className="text-lg">{isCollapsed ? "☰" : "⚙️"}</span>
+            {isCollapsed ? <AiOutlineMenu className="text-lg" /> : <AiOutlineSetting className="text-lg" />}
             {!isCollapsed && <span>Collapse</span>}
           </button>
         </div>
@@ -78,7 +86,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 text-gray-400 hover:text-white transition-colors"
           >
-            <span className="text-lg">{isCollapsed ? "☰" : "⚙️"}</span>
+            <span className="text-lg">{isCollapsed ? <AiOutlineMenu /> : <AiOutlineSetting />}</span>
             {!isCollapsed && <span>Collapse</span>}
           </button>
         </div> */}

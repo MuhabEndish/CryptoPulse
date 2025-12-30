@@ -3,13 +3,17 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./styles.css";
 
-import Auth from "./pages/Auth";
+import Login from "./pages/Login";
+import SignUp from "./pages/SignUp";
 import Home from "./pages/Home";
+import Market from "./pages/Market";
 import Favorites from "./pages/Favorites";
 import CoinDetail from "./pages/CoinDetail";
 import Feed from "./pages/Feed";
+import CreatePost from "./pages/CreatePost";
 import PostView from "./components/PostView";
 import Profile from "./pages/Profile";
+import PrivacySecurity from "./pages/PrivacySecurity";
 import Search from "./pages/Search";
 import Alerts from "./pages/Alerts";
 import AdminLogin from "./pages/AdminLogin";
@@ -30,17 +34,21 @@ function App() {
         <BrowserRouter>
         <Routes>
           {/* Auth routes without Layout */}
-          <Route path="/auth" element={<Auth />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
           <Route path="/admin/login" element={<AdminLogin />} />
 
           {/* Main app routes with Layout */}
           <Route path="/" element={<Layout><Home /></Layout>} />
+          <Route path="/market" element={<Layout><Market /></Layout>} />
           <Route path="/favorites" element={<Layout><Favorites /></Layout>} />
           <Route path="/coin/:id" element={<Layout><CoinDetail /></Layout>} />
           <Route path="/feed" element={<Layout><Feed /></Layout>} />
+          <Route path="/create-post" element={<Layout><CreatePost /></Layout>} />
           <Route path="/post/:id" element={<Layout><PostView /></Layout>} />
           <Route path="/profile" element={<Layout><Profile /></Layout>} />
           <Route path="/profile/:userId" element={<Layout><Profile /></Layout>} />
+          <Route path="/privacy-security" element={<Layout><PrivacySecurity /></Layout>} />
           <Route path="/search" element={<Layout><Search /></Layout>} />
           <Route path="/alerts" element={<Layout><Alerts /></Layout>} />
 

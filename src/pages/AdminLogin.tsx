@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, checkAdminStatus } from '../services/supabase';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { AiOutlineArrowLeft, AiOutlineLock, AiOutlineUnlock, AiOutlineMail } from 'react-icons/ai';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -39,7 +40,7 @@ export default function AdminLogin() {
       if (!isAdmin) {
         // Not an admin - sign out
         await supabase.auth.signOut();
-        setError('⛔ You do not have admin permissions to access this page');
+        setError('[Error] You do not have admin permissions to access this page');
         setLoading(false);
         return;
       }
@@ -51,7 +52,7 @@ export default function AdminLogin() {
         .eq('user_id', authData.user.id);
 
       // Login successful - navigate to dashboard
-      console.log('✅ Admin logged in:', adminData?.role);
+      console.log('[Success] Admin logged in:', adminData?.role);
       navigate('/admin/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);
@@ -76,7 +77,7 @@ export default function AdminLogin() {
 
       if (error) throw error;
 
-      setResetMessage('✅ Password reset link has been sent to your email');
+      setResetMessage('[Success] Password reset link has been sent to your email');
       setResetEmail('');
       setTimeout(() => {
         setShowForgotPassword(false);
@@ -109,10 +110,32 @@ export default function AdminLogin() {
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
           <div style={{
-            fontSize: '60px',
-            marginBottom: '10px'
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '12px',
+            marginBottom: '20px'
           }}>
-            🔐
+            <img
+              src="/images/CryptoPulseLogo.png"
+              alt="CryptoPulse Logo"
+              style={{ height: '48px', width: 'auto' }}
+            />
+            <span style={{
+              fontSize: '32px',
+              fontWeight: '700',
+              color: 'var(--text)'
+            }}>
+              CryptoPulse
+            </span>
+          </div>
+          <div style={{
+            fontSize: '40px',
+            marginBottom: '10px',
+            display: 'flex',
+            justifyContent: 'center'
+          }}>
+            <AiOutlineLock style={{ color: 'var(--accent)' }} />
           </div>
           <h1 style={{
             fontSize: '28px',
@@ -284,7 +307,7 @@ export default function AdminLogin() {
                 </>
               ) : (
                 <>
-                  <span>🔓</span>
+                  <AiOutlineUnlock />
                   <span>Sign In</span>
                 </>
               )}
@@ -376,7 +399,7 @@ export default function AdminLogin() {
                   </>
                 ) : (
                   <>
-                    <span>📧</span>
+                    <AiOutlineMail />
                     <span>Send</span>
                   </>
                 )}
@@ -407,7 +430,7 @@ export default function AdminLogin() {
               margin: '0 auto'
             }}
           >
-            <span>←</span>
+            <AiOutlineArrowLeft />
             <span>Back to Home</span>
           </button>
         </div>

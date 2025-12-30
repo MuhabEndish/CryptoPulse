@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ReactDOM from "react-dom";
 import { supabase } from "../services/supabase";
 import { useToast } from "./ToastProvider";
 
@@ -58,22 +59,31 @@ export default function PriceAlertModal({ isOpen, onClose, coin, userId }: Price
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-dark-card border border-dark-border rounded-xl max-w-md w-full p-6">
+  return ReactDOM.createPortal(
+    <div
+      className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 overflow-y-auto"
+      style={{ zIndex: 99999 }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-dark-card border border-primary/30 rounded-xl max-w-md w-full my-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between p-6 border-b border-dark-border bg-gradient-to-r from-primary/10 to-pink-500/10">
           <h2 className="text-xl font-bold text-white">Set Price Alert</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors text-2xl"
+            className="text-gray-400 hover:text-white transition-colors text-3xl leading-none"
           >
             ×
           </button>
         </div>
 
-        {/* Coin Info */}
-        <div className="bg-dark rounded-lg p-4 mb-4">
+        {/* Content */}
+        <div className="p-6">
+          {/* Coin Info */}
+          <div className="bg-dark rounded-lg p-4 mb-4">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-white font-semibold">{coin.name}</span>
             <span className="text-gray-400 uppercase text-sm">{coin.symbol}</span>
@@ -147,7 +157,9 @@ export default function PriceAlertModal({ isOpen, onClose, coin, userId }: Price
         <p className="text-gray-500 text-xs mt-4 text-center">
           You'll be notified when {coin.symbol.toUpperCase()} reaches your target price
         </p>
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

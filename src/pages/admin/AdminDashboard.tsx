@@ -2,6 +2,19 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { checkAdminStatus, getDashboardStats, supabase } from '../../services/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import {
+  AiOutlineUser,
+  AiOutlineSun,
+  AiOutlineMoon,
+  AiOutlineHome,
+  AiOutlineLogout,
+  AiOutlineTeam,
+  AiOutlineFileText,
+  AiOutlineMessage,
+  AiOutlineWarning,
+  AiOutlineStop,
+  AiOutlineTrophy
+} from 'react-icons/ai';
 
 interface DashboardStats {
   total_posts: number;
@@ -40,7 +53,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function init() {
-      // التحقق من الصلاحيات
+      // Check permissions
       const { isAdmin, adminData: admin } = await checkAdminStatus();
 
       if (!isAdmin) {
@@ -50,7 +63,7 @@ export default function AdminDashboard() {
 
       setAdminData(admin as AdminData);
 
-      // جلب الإحصائيات
+      // Fetch statistics
       const result = await getDashboardStats();
       if (result.success) {
         setStats(result.data);
@@ -100,7 +113,7 @@ export default function AdminDashboard() {
         boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <span style={{ fontSize: '32px' }}>👨‍💼</span>
+          <AiOutlineUser style={{ fontSize: '32px' }} />
           <div>
             <h1 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>
               Admin Dashboard
@@ -110,12 +123,12 @@ export default function AdminDashboard() {
               color: 'var(--text-secondary)',
               margin: '4px 0 0 0'
             }}>
-              الدور: <span style={{
+              Role: <span style={{
                 color: 'var(--accent)',
                 fontWeight: '600'
               }}>
-                {adminData?.role === 'super_admin' ? 'مدير عام' :
-                 adminData?.role === 'admin' ? 'مدير' : 'مشرف'}
+                {adminData?.role === 'super_admin' ? 'Super Admin' :
+                 adminData?.role === 'admin' ? 'Admin' : 'Moderator'}
               </span>
             </p>
           </div>
@@ -133,9 +146,9 @@ export default function AdminDashboard() {
               fontSize: '20px',
               transition: 'all 0.2s'
             }}
-            title={darkMode ? "وضع النهار" : "الوضع الليلي"}
+            title={darkMode ? "Day Mode" : "Night Mode"}
           >
-            {darkMode ? "☀️" : "🌙"}
+            {darkMode ? <AiOutlineSun /> : <AiOutlineMoon />}
           </button>
           <button
             onClick={() => navigate('/')}
@@ -151,7 +164,7 @@ export default function AdminDashboard() {
               transition: 'all 0.2s'
             }}
           >
-            🏠 الصفحة الرئيسية
+            <AiOutlineHome style={{ display: 'inline-block', marginRight: '6px' }} /> Home Page
           </button>
           <button
             onClick={handleLogout}
@@ -167,7 +180,7 @@ export default function AdminDashboard() {
               transition: 'all 0.2s'
             }}
           >
-            🚪 تسجيل الخروج
+            <AiOutlineLogout style={{ display: 'inline-block', marginRight: '6px' }} /> Logout
           </button>
         </div>
       </header>
@@ -182,34 +195,34 @@ export default function AdminDashboard() {
           marginBottom: '40px'
         }}>
           <StatCard
-            icon="👥"
+            icon={<AiOutlineTeam />}
             title="Total Users"
             value={stats?.total_users || 0}
             color="#667eea"
             subtitle={`${stats?.new_users_24h || 0} new in 24h`}
           />
           <StatCard
-            icon="📝"
+            icon={<AiOutlineFileText />}
             title="Total Posts"
             value={stats?.total_posts || 0}
             color="#06b6d4"
             subtitle={`${stats?.posts_last_24h || 0} new in 24h`}
           />
           <StatCard
-            icon="💬"
+            icon={<AiOutlineMessage />}
             title="Total Comments"
             value={stats?.total_comments || 0}
             color="#10b981"
           />
           <StatCard
-            icon="🚨"
+            icon={<AiOutlineWarning />}
             title="Pending Reports"
             value={stats?.pending_reports || 0}
             color="#f59e0b"
             alert={stats?.pending_reports ? stats.pending_reports > 0 : false}
           />
           <StatCard
-            icon="🚫"
+            icon={<AiOutlineStop />}
             title="Banned Users"
             value={stats?.banned_users || 0}
             color="#ef4444"
@@ -233,27 +246,27 @@ export default function AdminDashboard() {
             gap: '20px'
           }}>
             <ActionCard
-              icon="🚨"
+              icon={<AiOutlineWarning />}
               title="Manage Reports"
               description="View and respond to user reports"
               onClick={() => navigate('/admin/reports')}
               badge={stats?.pending_reports}
             />
             <ActionCard
-              icon="📝"
+              icon={<AiOutlineFileText />}
               title="Manage Posts"
               description="View and delete inappropriate posts"
               onClick={() => navigate('/admin/posts')}
             />
             <ActionCard
-              icon="👥"
+              icon={<AiOutlineTeam />}
               title="Manage Users"
               description="Ban, unban, or delete users"
               onClick={() => navigate('/admin/users')}
             />
             {adminData?.role === 'super_admin' && (
               <ActionCard
-                icon="�‍💼"
+                icon={<AiOutlineUser />}
                 title="Manage Admins"
                 description="Add, edit, and delete admins and moderators"
                 onClick={() => navigate('/admin/management')}
@@ -270,7 +283,7 @@ export default function AdminDashboard() {
           color: 'white',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '10px' }}>🎉</div>
+          <AiOutlineTrophy style={{ fontSize: '48px', marginBottom: '10px' }} />
           <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '10px' }}>
             Welcome to the Dashboard!
           </h3>
@@ -332,7 +345,7 @@ function StatCard({ icon, title, value, color, subtitle, alert }: StatCardProps)
           color: color,
           margin: '0 0 8px 0'
         }}>
-          {value.toLocaleString('ar')}
+          {value.toLocaleString('en')}
         </h3>
         <p style={{
           fontSize: '14px',

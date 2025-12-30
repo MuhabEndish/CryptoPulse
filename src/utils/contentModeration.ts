@@ -166,10 +166,10 @@ export function moderateContent(
  * Error message for user when content is rejected
  */
 export const INAPPROPRIATE_CONTENT_MESSAGE =
-  "⚠️ Content rejected! It contains inappropriate words or content. Please respect the community and maintain ethics.";
+  "Content rejected! It contains inappropriate words or content. Please respect the community and maintain ethics.";
 
 /**
  * Warning message
  */
 export const WARNING_MESSAGE =
-  "⚠️ Warning: Inappropriate content may result in account suspension.";
+  "Warning: Inappropriate content may result in account suspension.";

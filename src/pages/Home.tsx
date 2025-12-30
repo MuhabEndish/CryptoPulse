@@ -5,6 +5,22 @@ import { supabase } from "../services/supabase";
 import { fetchMarketData, fetchFearAndGreedIndex } from "../services/cryptoApi";
 import LoadingSpinner from "../components/LoadingSpinner";
 import PriceAlertModal from "../components/PriceAlertModal";
+import FearGreedGauge from "../components/FearGreedGauge";
+import {
+  AiOutlineArrowUp as ArrowUpOutlined,
+  AiOutlineArrowDown as ArrowDownOutlined,
+  AiOutlineMinus as MinusOutlined,
+  AiOutlineRise as RiseOutlined,
+  AiOutlineStock as StockOutlined,
+  AiOutlineLineChart as LineChartOutlined,
+  AiOutlineStar as StarOutlined,
+  AiOutlineFire as FireOutlined,
+  AiOutlineFall as FallOutlined,
+  AiOutlineMessage as MessageOutlined,
+  AiOutlineBarChart as BarChartOutlined,
+  AiOutlineArrowRight as ArrowRightOutlined,
+  AiOutlineThunderbolt as ThunderboltOutlined
+} from 'react-icons/ai';
 
 export default function Home() {
   const user = useAuth();
@@ -47,7 +63,7 @@ export default function Home() {
 
   async function toggleFavorite(coinId: string) {
     if (!user) {
-      navigate('/auth');
+      navigate('/login');
       return;
     }
 
@@ -81,16 +97,30 @@ export default function Home() {
   }
 
   if (!user) {
-    navigate('/auth');
+    navigate('/login');
     return null;
   }
 
-  // Get top coins for KPIs
+  // Get top coins for KPIs and insights
   const btc = coins.find(c => c.id === "bitcoin");
   const totalMarketCap = coins.reduce((sum, c) => sum + (c.market_cap || 0), 0);
   const avgChange = coins.length > 0
     ? coins.reduce((sum, c) => sum + (c.price_change_percentage_24h || 0), 0) / coins.length
     : 0;
+
+  // Quick Insights
+  const topGainer = coins.length > 0
+    ? coins.reduce((max, coin) => coin.price_change_percentage_24h > max.price_change_percentage_24h ? coin : max, coins[0])
+    : null;
+
+  const topLoser = coins.length > 0
+    ? coins.reduce((min, coin) => coin.price_change_percentage_24h < min.price_change_percentage_24h ? coin : min, coins[0])
+    : null;
+
+  // Market mood based on average change
+  const marketMood = avgChange > 2 ? "Bullish" : avgChange < -2 ? "Bearish" : "Neutral";
+  const marketMoodIcon = avgChange > 2 ? <ArrowUpOutlined /> : avgChange < -2 ? <ArrowDownOutlined /> : <MinusOutlined />;
+  const marketMoodColor = avgChange > 2 ? "text-green-400" : avgChange < -2 ? "text-red-400" : "text-gray-400";
 
   return (
     <div className="space-y-6">
@@ -125,13 +155,21 @@ export default function Home() {
         <div className="bg-dark-card border border-dark-border rounded-xl p-6 hover:shadow-glow transition-all">
           <div className="flex items-center justify-between mb-2">
             <span className="text-gray-400 text-sm font-medium">Bitcoin Price</span>
-            <span className="text-2xl">₿</span>
+            <span className="text-2xl text-orange-500">₿</span>
           </div>
           <div className="text-2xl font-bold text-white mb-1">
             ${btc ? btc.current_price.toLocaleString() : "—"}
           </div>
-          <div className={`text-sm font-medium ${btc && btc.price_change_percentage_24h > 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {btc ? `${btc.price_change_percentage_24h > 0 ? '↑' : '↓'} ${Math.abs(btc.price_change_percentage_24h).toFixed(2)}%` : '—'}
+          <div className={`text-sm font-medium flex items-center gap-1 ${
+            btc && btc.price_change_percentage_24h > 0 ? 'text-green-400' : 'text-red-400'
+          }`}>
+            {btc && (
+              <>
+                {btc.price_change_percentage_24h > 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+                {Math.abs(btc.price_change_percentage_24h).toFixed(2)}%
+              </>
+            )}
+            {!btc && '—'}
           </div>
         </div>
 
@@ -139,7 +177,7 @@ export default function Home() {
         <div className="bg-dark-card border border-dark-border rounded-xl p-6 hover:shadow-glow transition-all">
           <div className="flex items-center justify-between mb-2">
             <span className="text-gray-400 text-sm font-medium">Total Market Cap</span>
-            <span className="text-2xl">💹</span>
+            <RiseOutlined className="text-2xl" />
           </div>
           <div className="text-2xl font-bold text-white mb-1">
             ${(totalMarketCap / 1e12).toFixed(2)}T
@@ -153,10 +191,13 @@ export default function Home() {
         <div className="bg-dark-card border border-dark-border rounded-xl p-6 hover:shadow-glow transition-all">
           <div className="flex items-center justify-between mb-2">
             <span className="text-gray-400 text-sm font-medium">Avg 24h Change</span>
-            <span className="text-2xl">📊</span>
+            <LineChartOutlined className="text-2xl" />
           </div>
-          <div className={`text-2xl font-bold mb-1 ${avgChange > 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {avgChange > 0 ? '↑' : '↓'} {Math.abs(avgChange).toFixed(2)}%
+          <div className={`text-2xl font-bold mb-1 flex items-center gap-1 ${
+            avgChange > 0 ? 'text-green-400' : 'text-red-400'
+          }`}>
+            {avgChange > 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+            {Math.abs(avgChange).toFixed(2)}%
           </div>
           <div className="text-sm text-gray-400">
             Market average
@@ -168,13 +209,13 @@ export default function Home() {
              onClick={() => navigate('/favorites')}>
           <div className="flex items-center justify-between mb-2">
             <span className="text-gray-400 text-sm font-medium">My Watchlist</span>
-            <span className="text-2xl">⭐</span>
+            <StarOutlined className="text-2xl text-primary" />
           </div>
           <div className="text-2xl font-bold text-white mb-1">
             {favorites.length}
           </div>
-          <div className="text-sm text-primary font-medium">
-            View all →
+          <div className="text-sm text-primary font-medium flex items-center gap-1">
+            View all <ArrowRightOutlined className="text-sm" />
           </div>
         </div>
 
@@ -182,117 +223,164 @@ export default function Home() {
         <div className="bg-dark-card border border-dark-border rounded-xl p-6 hover:shadow-glow transition-all">
           <div className="flex items-center justify-between mb-2">
             <span className="text-gray-400 text-sm font-medium">Fear & Greed</span>
-            <span className="text-2xl">😱</span>
           </div>
-          <div className={`text-2xl font-bold mb-1 ${
-            !fearGreedIndex ? 'text-gray-400' :
-            fearGreedIndex.value <= 25 ? 'text-red-500' :
-            fearGreedIndex.value <= 45 ? 'text-orange-400' :
-            fearGreedIndex.value <= 55 ? 'text-yellow-400' :
-            fearGreedIndex.value <= 75 ? 'text-green-400' :
-            'text-green-500'
-          }`}>
-            {fearGreedIndex ? fearGreedIndex.value : '—'}
-          </div>
-          <div className="text-sm text-gray-400">
-            {fearGreedIndex ? fearGreedIndex.classification : 'Loading...'}
-          </div>
+          {fearGreedIndex ? (
+            <FearGreedGauge
+              value={fearGreedIndex.value}
+              classification={fearGreedIndex.classification}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-[140px]">
+              <LoadingSpinner size="small" />
+            </div>
+          )}
         </div>
       </div>
 
       {/* Trending Coins Section */}
       <div className="bg-dark-card border border-dark-border rounded-xl p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-white">🔥 Trending Coins</h2>
-          <button className="text-sm text-primary hover:text-primary-light font-medium transition-colors">
-            View All
-          </button>
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <BarChartOutlined className="text-xl" /> Market Snapshot
+          </h2>
         </div>
 
-        {/* Coins Table */}
-        <div className="space-y-3">
-          {coins.slice(0, 10).map((coin, index) => (
-            <div
-              key={coin.id}
-              onClick={() => navigate(`/coin/${coin.id}`)}
-              className="flex items-center justify-between p-4 rounded-lg hover:bg-dark transition-all cursor-pointer group"
-            >
-              {/* Left: Rank, Logo, Name */}
-              <div className="flex items-center gap-4 flex-1 min-w-0">
-                <span className="text-gray-500 font-medium w-6">{index + 1}</span>
-                <img
-                  src={coin.image}
-                  alt={coin.name}
-                  className="w-8 h-8 rounded-full"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-white group-hover:text-primary transition-colors">
-                    {coin.name}
-                  </div>
-                  <div className="text-sm text-gray-400 uppercase">
-                    {coin.symbol}
-                  </div>
-                </div>
-              </div>
-
-              {/* Middle: Price */}
-              <div className="text-right px-4 hidden sm:block">
-                <div className="font-semibold text-white">
-                  ${coin.current_price.toLocaleString()}
-                </div>
-                <div className="text-sm text-gray-400">
-                  MCap: ${(coin.market_cap / 1e9).toFixed(2)}B
-                </div>
-              </div>
-
-              {/* Right: Change & Actions */}
-              <div className="flex items-center gap-3">
-                <div className={`font-semibold ${
-                  coin.price_change_percentage_24h > 0 ? 'text-green-400' : 'text-red-400'
-                }`}>
-                  {coin.price_change_percentage_24h > 0 ? '↑' : '↓'}
-                  {Math.abs(coin.price_change_percentage_24h).toFixed(2)}%
-                </div>
-
-                {/* Favorite Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFavorite(coin.id);
-                  }}
-                  className={`text-2xl transition-transform hover:scale-125 ${
-                    favorites.includes(coin.id) ? 'text-primary' : 'text-gray-600'
-                  }`}
-                >
-                  {favorites.includes(coin.id) ? '★' : '☆'}
-                </button>
-
-                {/* Alert Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openAlertModal(coin);
-                  }}
-                  className="text-xl text-gray-600 hover:text-yellow-400 transition-all"
-                  title="Set Alert"
-                >
-                  🔔
-                </button>
-              </div>
+        {/* Market Context Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {/* Market Mood */}
+          <div className="bg-dark rounded-lg p-4 border border-dark-border">
+            <div className="text-sm text-gray-400 mb-2">Market Mood</div>
+            <div className={`text-2xl font-bold flex items-center gap-2 ${marketMoodColor}`}>
+              {marketMoodIcon}
+              <span>{marketMood}</span>
             </div>
-          ))}
+          </div>
+
+          {/* BTC Context */}
+          <div className="bg-dark rounded-lg p-4 border border-dark-border">
+            <div className="text-sm text-gray-400 mb-2">Bitcoin Context</div>
+            <div className="text-lg font-semibold text-white">
+              {btc ? `$${btc.current_price.toLocaleString()}` : "—"}
+            </div>
+            <div className={`text-sm font-medium flex items-center gap-1 ${
+              btc && btc.price_change_percentage_24h > 0 ? 'text-green-400' : 'text-red-400'
+            }`}>
+              {btc && (
+                <>
+                  {btc.price_change_percentage_24h > 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+                  {Math.abs(btc.price_change_percentage_24h).toFixed(2)}%
+                </>
+              )}
+              {!btc && '—'}
+            </div>
+          </div>
+
+          {/* Fear & Greed Summary */}
+          <div className="bg-dark rounded-lg p-4 border border-dark-border">
+            <div className="text-sm text-gray-400 mb-2">Fear & Greed</div>
+            <div className="text-lg font-semibold text-white">
+              {fearGreedIndex ? fearGreedIndex.classification : "Loading..."}
+            </div>
+            <div className="text-sm text-gray-400">
+              {fearGreedIndex ? `${fearGreedIndex.value}/100` : "—"}
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Insights */}
+        <div>
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <ThunderboltOutlined className="text-xl" /> Quick Insights
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Top Gainer */}
+            {topGainer && (
+              <div
+                onClick={() => navigate(`/coin/${topGainer.id}`)}
+                className="bg-dark rounded-lg p-4 border border-green-500/30 hover:border-green-500 transition-all cursor-pointer group"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm text-gray-400 flex items-center gap-1">
+                    <FireOutlined /> Top Gainer
+                  </div>
+                  <div className="text-green-400 text-xl font-bold flex items-center gap-1">
+                    <ArrowUpOutlined /> {topGainer.price_change_percentage_24h.toFixed(2)}%
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <img src={topGainer.image} alt={topGainer.name} className="w-8 h-8 rounded-full" />
+                  <div>
+                    <div className="font-semibold text-white group-hover:text-green-400 transition-colors">
+                      {topGainer.name}
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      ${topGainer.current_price.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Top Loser */}
+            {topLoser && (
+              <div
+                onClick={() => navigate(`/coin/${topLoser.id}`)}
+                className="bg-dark rounded-lg p-4 border border-red-500/30 hover:border-red-500 transition-all cursor-pointer group"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm text-gray-400 flex items-center gap-1">
+                    <FallOutlined /> Top Loser
+                  </div>
+                  <div className="text-red-400 text-xl font-bold flex items-center gap-1">
+                    <ArrowDownOutlined /> {Math.abs(topLoser.price_change_percentage_24h).toFixed(2)}%
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <img src={topLoser.image} alt={topLoser.name} className="w-8 h-8 rounded-full" />
+                  <div>
+                    <div className="font-semibold text-white group-hover:text-red-400 transition-colors">
+                      {topLoser.name}
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      ${topLoser.current_price.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* View Full Market Link */}
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => navigate('/market')}
+            className="text-primary hover:text-primary-light font-medium transition-colors flex items-center justify-center gap-1 mx-auto"
+          >
+            View full market rankings <ArrowRightOutlined className="text-base" />
+          </button>
         </div>
       </div>
 
-      {/* Trending Topics */}
+      {/* Social Pulse - Trending Topics */}
       <div className="bg-dark-card border border-dark-border rounded-xl p-6">
-        <h2 className="text-xl font-bold text-white mb-4">💬 Trending Topics</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <MessageOutlined /> Social Pulse
+          </h2>
+          <button
+            onClick={() => navigate('/feed')}
+            className="text-sm text-primary hover:text-primary-light font-medium transition-colors flex items-center gap-1"
+          >
+            View Social <ArrowRightOutlined className="text-sm" />
+          </button>
+        </div>
         <div className="flex flex-wrap gap-2">
-          {['#Bitcoin', '#Ethereum', '#DeFi', '#NFT', '#Altseason', '#BullRun'].map((tag) => (
+          {['#Bitcoin', '#Ethereum', '#DeFi', '#Altseason', '#BullRun'].map((tag) => (
             <button
               key={tag}
               onClick={() => navigate(`/search?q=${encodeURIComponent(tag)}`)}
-              className="px-4 py-2 bg-dark rounded-lg text-primary hover:bg-primary hover:text-white transition-all font-medium"
+              className="px-3 py-1.5 bg-dark rounded-lg text-sm text-primary hover:bg-primary hover:text-white transition-all font-medium"
             >
               {tag}
             </button>
