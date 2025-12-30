@@ -662,7 +662,7 @@ export default function Navbar() {
       {/* Mobile Menu Dropdown */}
       {showMobileMenu && (
         <div ref={mobileMenuRef} className="lg:hidden border-t border-dark-border bg-dark-card">
-          <div className="px-4 py-2 space-y-1">
+          <div className="px- py-2 space-y-1">
             {/* Primary Navigation */}
             {primaryNavItems.map((item) => (
               <Link
