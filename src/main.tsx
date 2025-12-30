@@ -5,6 +5,8 @@ import "./styles.css";
 
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
 import Market from "./pages/Market";
 import Favorites from "./pages/Favorites";
@@ -36,6 +38,8 @@ function App() {
           {/* Auth routes without Layout */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/admin/login" element={<AdminLogin />} />
 
           {/* Main app routes with Layout */}
