@@ -34,8 +34,10 @@ type PostCardProps = {
 export default function PostCard({ post, onChange }: PostCardProps) {
   const user = useAuth();
   const { showToast } = useToast();
-  const liked = post.likes?.some((l: any) => l.user_id === user?.id);
-  const likesCount = post.likes?.length || 0;
+  const [liked, setLiked] = useState(post.likes?.some((l: any) => l.user_id === user?.id) || false);
+  const [likesCount, setLikesCount] = useState(post.likes?.length || 0);
+  const [commentsCount, setCommentsCount] = useState(post.comments?.length || 0);
+  const [followed, setFollowed] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -47,10 +49,7 @@ export default function PostCard({ post, onChange }: PostCardProps) {
   const [showImageModal, setShowImageModal] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Check if post author allows social interactions
-  const authorPrivacySettings = post.profiles?.privacy_settings || {};
-  const allowSocialInteractions = authorPrivacySettings.allowSocialInteractions ?? true;
-
+  // Get coin data
   const coin = post.coin || "BTC";
   const sentiment = post.sentiment || "Neutral";
 
@@ -67,6 +66,35 @@ export default function PostCard({ post, onChange }: PostCardProps) {
   };
 
   const coinId = coinIdMap[coin] || coin.toLowerCase();
+
+  // Update liked and comments state when post changes
+  useEffect(() => {
+    setLiked(post.likes?.some((l: any) => l.user_id === user?.id) || false);
+    setLikesCount(post.likes?.length || 0);
+    setCommentsCount(post.comments?.length || 0);
+  }, [post.likes, post.comments, user?.id]);
+
+  // Load followed status
+  useEffect(() => {
+    async function checkFollowStatus() {
+      if (!user || !coinId) return;
+
+      const { data } = await supabase
+        .from("favorite_cryptos")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("coin_id", coinId)
+        .single();
+
+      setFollowed(!!data);
+    }
+
+    checkFollowStatus();
+  }, [user, coinId]);
+
+  // Check if post author allows social interactions
+  const authorPrivacySettings = post.profiles?.privacy_settings || {};
+  const allowSocialInteractions = authorPrivacySettings.allowSocialInteractions ?? true;
 
   const sentimentColors = {
     Bullish: { bg: "#10b981", text: "text-green-400", icon: RiseOutlined },
@@ -90,7 +118,14 @@ export default function PostCard({ post, onChange }: PostCardProps) {
   }, [showMenu]);
 
   async function toggleLike() {
-    if (!user) return;
+    if (!user) {
+      showToast("Please log in to like posts", "error");
+      return;
+    }
+
+    console.log("Toggle like - User:", { id: user.id, email: user.email });
+    console.log("Toggle like - Post:", post.id);
+    console.log("Toggle like - Current liked state:", liked);
 
     // 🚫 Check if user is banned
     const banStatus = await checkIfUserBanned();
@@ -102,19 +137,96 @@ export default function PostCard({ post, onChange }: PostCardProps) {
       return;
     }
 
-    if (liked) {
-      await supabase.from("likes").delete().match({
-        post_id: post.id,
-        user_id: user.id,
-      });
-    } else {
-      await supabase.from("likes").insert({
-        post_id: post.id,
-        user_id: user.id,
-      });
+    // Optimistically update UI immediately
+    const wasLiked = liked;
+    setLiked(!liked);
+    setLikesCount(prev => wasLiked ? prev - 1 : prev + 1);
+
+    try {
+      let result;
+      if (wasLiked) {
+        // Unlike: delete the like
+        console.log("Deleting like...");
+        result = await supabase.from("likes").delete().match({
+          post_id: post.id,
+          user_id: user.id,
+        });
+      } else {
+        // Like: insert new like
+        console.log("Inserting like...");
+        result = await supabase.from("likes").insert({
+          post_id: post.id,
+          user_id: user.id,
+        });
+      }
+
+      console.log("Like operation result:", result);
+
+      // Check if the database operation failed
+      if (result.error) {
+        console.error("Like operation failed:", result.error);
+        throw result.error;
+      }
+
+      console.log("Like operation successful!");
+
+      // Wait a moment for database to process
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Refresh the post data to sync with database
+      await onChange();
+    } catch (error) {
+      console.error("Error in toggleLike:", error);
+      // Revert on error
+      setLiked(wasLiked);
+      setLikesCount(prev => wasLiked ? prev + 1 : prev - 1);
+      showToast("Failed to update like. Please try again.", "error");
+    }
+  }
+
+  async function toggleFollow() {
+    if (!user) {
+      showToast("Please log in to follow coins", "error");
+      return;
     }
 
-    await onChange(); // ✅ refresh list
+    if (!coinId) {
+      showToast("Invalid coin", "error");
+      return;
+    }
+
+    const wasFollowed = followed;
+    setFollowed(!followed); // Optimistic update
+
+    try {
+      if (wasFollowed) {
+        // Unfollow
+        const { error } = await supabase
+          .from("favorite_cryptos")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("coin_id", coinId);
+
+        if (error) throw error;
+        showToast(`${coin} removed from watchlist`, "success");
+      } else {
+        // Follow
+        const { error } = await supabase
+          .from("favorite_cryptos")
+          .insert({
+            user_id: user.id,
+            coin_id: coinId,
+          });
+
+        if (error) throw error;
+        showToast(`${coin} added to watchlist!`, "success");
+      }
+    } catch (error) {
+      console.error("Error toggling follow:", error);
+      // Revert on error
+      setFollowed(wasFollowed);
+      showToast("Failed to update watchlist. Please try again.", "error");
+    }
   }
 
   async function deletePost() {
@@ -174,6 +286,7 @@ export default function PostCard({ post, onChange }: PostCardProps) {
       console.error("Error loading comments:", error);
     } else {
       setComments(data || []);
+      setCommentsCount(data?.length || 0); // Update comments count
     }
     setLoadingComments(false);
   }
@@ -348,7 +461,7 @@ export default function PostCard({ post, onChange }: PostCardProps) {
             title={allowSocialInteractions ? "View comments" : "Comments disabled by author"}
           >
             <CommentOutlined className="text-xl" />
-            <span className="text-sm font-medium">{post.comments?.length ?? 0}</span>
+            <span className="text-sm font-medium">{commentsCount}</span>
           </button>
 
           {/* View Coin */}
@@ -363,15 +476,16 @@ export default function PostCard({ post, onChange }: PostCardProps) {
 
           {/* Follow Coin */}
           <button
-            onClick={async () => {
-              // TODO: Implement follow coin functionality
-              showToast(`${coin} added to watchlist!`, "success");
-            }}
-            className="flex items-center gap-2 text-gray-400 hover:text-yellow-400 transition-all"
-            title={`Add ${coin} to watchlist`}
+            onClick={toggleFollow}
+            className={`flex items-center gap-2 transition-all ${
+              followed ? "text-yellow-400" : "text-gray-400 hover:text-yellow-400"
+            }`}
+            title={followed ? `Remove ${coin} from watchlist` : `Add ${coin} to watchlist`}
           >
             <StarFilled className="text-xl" />
-            <span className="text-sm font-medium hidden sm:inline">Follow</span>
+            <span className="text-sm font-medium hidden sm:inline">
+              {followed ? "Following" : "Follow"}
+            </span>
           </button>
         </div>
 

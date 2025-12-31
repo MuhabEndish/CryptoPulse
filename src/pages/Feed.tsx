@@ -29,8 +29,10 @@ export default function Feed() {
   const [sortBy, setSortBy] = useState<"latest" | "likes" | "comments">("latest");
   const [filterCoin, setFilterCoin] = useState<string>("all");
   const [filterSentiment, setFilterSentiment] = useState<string>("all");
+  const [timeRange, setTimeRange] = useState<"1H" | "24H" | "3D" | "7D">("24H");
   const [showFollowing, setShowFollowing] = useState(false);
   const [sentimentStats, setSentimentStats] = useState({ bullish: 0, bearish: 0, neutral: 0 });
+  const [coinSentimentStats, setCoinSentimentStats] = useState<Record<string, { bullish: number, bearish: number, neutral: number }>>({})
   const [isScrolled, setIsScrolled] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
@@ -73,7 +75,7 @@ export default function Feed() {
       .from("posts")
       .select(`
         *,
-        likes(id),
+        likes(id, user_id),
         comments(id),
         profiles(username, avatar_url, privacy_settings)
       `)
@@ -122,6 +124,20 @@ export default function Feed() {
       sentiment: post.sentiment || "Neutral"
     }));
 
+    // Apply time range filter
+    const now = new Date();
+    const timeRangeMs: Record<string, number> = {
+      "1H": 60 * 60 * 1000,
+      "24H": 24 * 60 * 60 * 1000,
+      "3D": 3 * 24 * 60 * 60 * 1000,
+      "7D": 7 * 24 * 60 * 60 * 1000
+    };
+    const cutoffTime = new Date(now.getTime() - timeRangeMs[timeRange]);
+    processedPosts = processedPosts.filter((post: any) => {
+      const postDate = new Date(post.created_at);
+      return postDate >= cutoffTime;
+    });
+
     // Apply filters
     if (filterCoin !== "all") {
       processedPosts = processedPosts.filter((post: any) => post.coin === filterCoin);
@@ -140,12 +156,26 @@ export default function Feed() {
 
     // Calculate sentiment stats for displayed posts
     const stats = { bullish: 0, bearish: 0, neutral: 0 };
+    const coinStats: Record<string, { bullish: number, bearish: number, neutral: number }> = {};
+
     processedPosts.forEach((post: any) => {
+      // Overall stats
       if (post.sentiment === "Bullish") stats.bullish++;
       else if (post.sentiment === "Bearish") stats.bearish++;
       else stats.neutral++;
+
+      // Per-coin stats
+      const coin = post.coin || "BTC";
+      if (!coinStats[coin]) {
+        coinStats[coin] = { bullish: 0, bearish: 0, neutral: 0 };
+      }
+      if (post.sentiment === "Bullish") coinStats[coin].bullish++;
+      else if (post.sentiment === "Bearish") coinStats[coin].bearish++;
+      else coinStats[coin].neutral++;
     });
+
     setSentimentStats(stats);
+    setCoinSentimentStats(coinStats);
 
     setPosts(processedPosts);
     setLoading(false);
@@ -221,7 +251,7 @@ export default function Feed() {
     if (user) {
       loadPosts();
     }
-  }, [sortBy, filterCoin, filterSentiment, showFollowing]);
+  }, [sortBy, filterCoin, filterSentiment, timeRange, showFollowing]);
 
   // Show loading state while checking authentication
   if (user === undefined) {
@@ -243,11 +273,11 @@ export default function Feed() {
       <div className={`sticky top-16 z-20 bg-dark-card border-b border-dark-border backdrop-blur-sm bg-opacity-95 transition-all duration-300 ${
         isScrolled ? 'py-3' : 'py-6'
       }`}>
-        <div className="w-full px-4">
+        <div className="w-full px-3">
           <div className="flex flex-wrap items-center justify-between gap-4">
 
             {/* Left: Market Stats */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-5">
               {/* Trending Coin */}
               <div className={`transition-all duration-300 ${isScrolled ? 'text-center' : ''}`}>
                 <div className={`text-gray-400 transition-all duration-300 flex items-center gap-1 justify-center ${
@@ -284,9 +314,12 @@ export default function Feed() {
                   isScrolled ? 'gap-3' : 'gap-4 px-4 py-2 bg-primary/10 rounded-lg'
                 }`}>
                   {!isScrolled && (
-                    <span className="text-white font-semibold text-sm flex items-center gap-1">
-                      <BarChartOutlined className="text-lg" /> Sentiment:
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-semibold text-sm flex items-center gap-1">
+                        <BarChartOutlined className="text-lg" /> Sentiment:
+                      </span>
+                      <span className="text-xs text-gray-400 bg-dark px-2 py-1 rounded">{timeRange}</span>
+                    </div>
                   )}
                   {isScrolled && <BarChartOutlined className="text-gray-400 text-base" />}
 
@@ -330,7 +363,7 @@ export default function Feed() {
 
                 {/* Filter Dropdown */}
                 {showFilters && (
-                  <div className="absolute right-0 mt-2 w-80 bg-dark-card border border-dark-border rounded-xl shadow-glow-lg overflow-hidden z-30">
+                  <div className="absolute right-0 mt-2 w-80 bg-dark-card border border-dark-border rounded-xl shadow-glow-lg z-30 max-h-[calc(100vh-180px)] overflow-y-auto">
                     <div className="p-4 space-y-4">
                       {/* Sort By Section */}
                       <div>
@@ -392,6 +425,31 @@ export default function Feed() {
                           ))}
                         </select>
                       </div>
+
+                      {/* Time Range Filter */}
+                      <div>
+                        <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                          <ClockOutlined className="text-lg" />
+                          Time Range
+                        </h4>
+                        <div className="grid grid-cols-4 gap-2">
+                          {(["1H", "24H", "3D", "7D"] as const).map((range) => (
+                            <button
+                              key={range}
+                              onClick={() => setTimeRange(range)}
+                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                timeRange === range
+                                  ? "bg-primary text-white"
+                                  : "bg-dark text-gray-400 hover:text-white hover:bg-dark-border"
+                              }`}
+                            >
+                              {range}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <hr className="border-dark-border" />
 
                       {/* Filter By Sentiment */}
                       <div>
@@ -469,9 +527,153 @@ export default function Feed() {
           )}
         </div>
 
-        {/* Right Side - Empty for now */}
-        <div className="w-80 flex-shrink-0 sticky top-4 h-fit hidden lg:block">
-          {/* Content will go here */}
+        {/* Right Side - Sentiment Dashboard */}
+        <div className="w-80 flex-shrink-0 sticky top-24 h-fit hidden lg:block">
+          <div className="bg-dark-card border border-dark-border rounded-xl p-6 space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                <BarChartOutlined className="text-primary text-xl" />
+                Sentiment Dashboard
+              </h3>
+              <span className="text-xs text-gray-400 bg-dark px-2 py-1 rounded">{timeRange}</span>
+            </div>
+
+            {/* Overall Sentiment */}
+            <div>
+              <h4 className="text-gray-400 text-sm mb-3">Overall Market Sentiment</h4>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <RiseOutlined className="text-green-400" />
+                    <span className="text-white text-sm">Bullish</span>
+                  </div>
+                  <span className="text-green-400 font-bold">
+                    {posts.length > 0 ? Math.round((sentimentStats.bullish / posts.length) * 100) : 0}%
+                  </span>
+                </div>
+                <div className="w-full bg-dark rounded-full h-2">
+                  <div
+                    className="bg-green-400 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${posts.length > 0 ? (sentimentStats.bullish / posts.length) * 100 : 0}%` }}
+                  ></div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FallOutlined className="text-red-400" />
+                    <span className="text-white text-sm">Bearish</span>
+                  </div>
+                  <span className="text-red-400 font-bold">
+                    {posts.length > 0 ? Math.round((sentimentStats.bearish / posts.length) * 100) : 0}%
+                  </span>
+                </div>
+                <div className="w-full bg-dark rounded-full h-2">
+                  <div
+                    className="bg-red-400 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${posts.length > 0 ? (sentimentStats.bearish / posts.length) * 100 : 0}%` }}
+                  ></div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MinusOutlined className="text-gray-400" />
+                    <span className="text-white text-sm">Neutral</span>
+                  </div>
+                  <span className="text-gray-400 font-bold">
+                    {posts.length > 0 ? Math.round((sentimentStats.neutral / posts.length) * 100) : 0}%
+                  </span>
+                </div>
+                <div className="w-full bg-dark rounded-full h-2">
+                  <div
+                    className="bg-gray-400 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${posts.length > 0 ? (sentimentStats.neutral / posts.length) * 100 : 0}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Coin-Specific Sentiment */}
+            {filterCoin !== "all" && coinSentimentStats[filterCoin] && (
+              <>
+                <hr className="border-dark-border" />
+                <div>
+                  <h4 className="text-gray-400 text-sm mb-3 flex items-center gap-2">
+                    <DollarOutlined className="text-primary" />
+                    {filterCoin} Sentiment
+                  </h4>
+                  <div className="space-y-3">
+                    {(() => {
+                      const stats = coinSentimentStats[filterCoin];
+                      const total = stats.bullish + stats.bearish + stats.neutral;
+                      return (
+                        <>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-green-400 flex items-center gap-1">
+                              <RiseOutlined /> Bullish
+                            </span>
+                            <span className="text-white font-bold">
+                              {total > 0 ? Math.round((stats.bullish / total) * 100) : 0}%
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-red-400 flex items-center gap-1">
+                              <FallOutlined /> Bearish
+                            </span>
+                            <span className="text-white font-bold">
+                              {total > 0 ? Math.round((stats.bearish / total) * 100) : 0}%
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-400 flex items-center gap-1">
+                              <MinusOutlined /> Neutral
+                            </span>
+                            <span className="text-white font-bold">
+                              {total > 0 ? Math.round((stats.neutral / total) * 100) : 0}%
+                            </span>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Top Coins by Sentiment */}
+            <hr className="border-dark-border" />
+            <div>
+              <h4 className="text-gray-400 text-sm mb-3">Top Coins by Activity</h4>
+              <div className="space-y-2">
+                {Object.entries(coinSentimentStats)
+                  .map(([coin, stats]) => ({
+                    coin,
+                    total: stats.bullish + stats.bearish + stats.neutral,
+                    bullishPercent: ((stats.bullish / (stats.bullish + stats.bearish + stats.neutral)) * 100) || 0
+                  }))
+                  .sort((a, b) => b.total - a.total)
+                  .slice(0, 5)
+                  .map(({ coin, total, bullishPercent }) => (
+                    <div
+                      key={coin}
+                      onClick={() => setFilterCoin(coin)}
+                      className="flex items-center justify-between p-2 rounded-lg bg-dark hover:bg-dark-border cursor-pointer transition-all"
+                    >
+                      <span className="text-white font-semibold">{coin}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400">{total} posts</span>
+                        <span className={`text-xs font-bold ${
+                          bullishPercent > 50 ? "text-green-400" :
+                          bullishPercent < 30 ? "text-red-400" : "text-gray-400"
+                        }`}>
+                          {Math.round(bullishPercent)}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

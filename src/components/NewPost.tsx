@@ -179,8 +179,7 @@ export default function NewPost({ onPost }: { onPost: () => void }) {
                   }`}
                   style={{
                     backgroundColor: selectedSentiment === sentiment.value ? sentiment.color : `${sentiment.color}33`,
-                    color: "white",
-                    ringColor: sentiment.color
+                    color: "white"
                   }}
                 >
                   <IconComponent className="text-base" /> {sentiment.value}

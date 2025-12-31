@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { submitReport, reportReasons, ReportReason, ReportData } from "../services/supabase";
 import { useAuth } from "../hooks/useAuth";
 import { useToast } from "./ToastProvider";
+import { MdOutlineReportProblem, MdClose, MdSend } from "react-icons/md";
+import { AiOutlineLoading3Quarters } from "react-icons/ai";
 
 interface ReportModalProps {
   isOpen: boolean;
@@ -107,8 +109,9 @@ export default function ReportModal({
             alignItems: 'center',
             marginBottom: '20px'
           }}>
-            <h2 style={{ margin: 0, fontSize: '20px' }}>
-              🚨 Report Content
+            <h2 style={{ margin: 0, fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <MdOutlineReportProblem style={{ color: '#ef4444', fontSize: '24px' }} />
+              Report Content
             </h2>
             <button
               onClick={handleClose}
@@ -137,7 +140,7 @@ export default function ReportModal({
                 e.currentTarget.style.background = 'transparent';
               }}
             >
-              ×
+              <MdClose />
             </button>
           </div>
 
@@ -223,13 +226,13 @@ export default function ReportModal({
                 fontWeight: 600,
                 color: 'white'
               }}>
-                تفاصيل إضافية (اختياري):
+                Additional Details (Optional):
               </label>
               <textarea
                 value={details}
                 onChange={(e) => setDetails(e.target.value)}
                 disabled={isSubmitting}
-                placeholder="أضف أي تفاصيل إضافية تساعدنا في فهم المشكلة..."
+                placeholder="Add any additional details to help us understand the issue..."
                 maxLength={500}
                 style={{
                   width: '100%',
@@ -285,7 +288,7 @@ export default function ReportModal({
                   e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
                 }}
               >
-                إلغاء
+                Cancel
               </button>
               <button
                 type="submit"
@@ -314,7 +317,17 @@ export default function ReportModal({
                   }
                 }}
               >
-                {isSubmitting ? '⏳ جاري الإرسال...' : '🚨 إرسال البلاغ'}
+                {isSubmitting ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <AiOutlineLoading3Quarters className="animate-spin" />
+                    Submitting...
+                  </span>
+                ) : (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <MdSend />
+                    Submit Report
+                  </span>
+                )}
               </button>
             </div>
           </form>
