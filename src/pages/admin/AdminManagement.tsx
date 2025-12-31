@@ -9,6 +9,8 @@ import {
 } from '../../services/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import AdminHeader from '../../components/AdminHeader';
+import { useToast } from '../../components/ToastProvider';
+import ConfirmModal from '../../components/ConfirmModal';
 import {
   AiOutlinePlus,
   AiOutlineDelete,
@@ -75,6 +77,16 @@ export default function AdminManagement() {
   const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const navigate = useNavigate();
+  const { showToast } = useToast();
+
+  // Modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   // Form states
   const [newAdminEmail, setNewAdminEmail] = useState('');
@@ -85,7 +97,7 @@ export default function AdminManagement() {
     async function init() {
       const { isAdmin, adminData } = await checkAdminStatus();
       if (!isAdmin || adminData?.role !== 'super_admin') {
-        alert('[Error] This page is only available to Super Admins');
+        showToast('This page is only available to Super Admins', 'error');
         navigate('/admin/dashboard');
         return;
       }
@@ -106,7 +118,7 @@ export default function AdminManagement() {
 
   async function handleAddAdmin() {
     if (!newAdminEmail.trim()) {
-      alert('[Error] Please enter the email address');
+      showToast('Please enter the email address', 'error');
       return;
     }
 
@@ -117,14 +129,14 @@ export default function AdminManagement() {
     const result = await addAdmin(newAdminEmail, selectedRole, permissions);
 
     if (result.success) {
-      alert('[Success] Admin added successfully');
+      showToast('Admin added successfully', 'success');
       setShowAddModal(false);
       setNewAdminEmail('');
       setSelectedRole('moderator');
       setCustomPermissions(DEFAULT_PERMISSIONS.moderator);
       loadAdmins();
     } else {
-      alert(`❌ ${result.error}`);
+      showToast(result.error || 'Failed to add admin', 'error');
     }
   }
 
@@ -136,25 +148,31 @@ export default function AdminManagement() {
     );
 
     if (result.success) {
-      alert('[Success] Permissions updated successfully');
+      showToast('Permissions updated successfully', 'success');
       setSelectedAdmin(null);
       loadAdmins();
     } else {
-      alert(`❌ ${result.error}`);
+      showToast(result.error || 'Failed to update permissions', 'error');
     }
   }
 
   async function handleDeleteAdmin(adminUserId: string, username: string) {
-    if (!confirm(`Do you want to delete admin "${username}"?`)) return;
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Admin',
+      message: `Are you sure you want to delete admin "${username}"? This action cannot be undone.`,
+      type: 'danger',
+      onConfirm: async () => {
+        const result = await deleteAdmin(adminUserId);
 
-    const result = await deleteAdmin(adminUserId);
-
-    if (result.success) {
-      alert('[Success] Admin deleted successfully');
-      loadAdmins();
-    } else {
-      alert(`❌ ${result.error}`);
-    }
+        if (result.success) {
+          showToast('Admin deleted successfully', 'success');
+          loadAdmins();
+        } else {
+          showToast(result.error || 'Failed to delete admin', 'error');
+        }
+      }
+    });
   }
 
   function getRoleBadgeColor(role: string) {
@@ -484,6 +502,19 @@ export default function AdminManagement() {
           </div>
         </div>
       )}
+
+      {/* Modals */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={() => {
+          confirmModal.onConfirm();
+          setConfirmModal({ ...confirmModal, isOpen: false });
+        }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
     </div>
   );
 }

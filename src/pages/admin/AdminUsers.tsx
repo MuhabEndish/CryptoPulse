@@ -10,6 +10,9 @@ import {
 } from '../../services/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import AdminHeader from '../../components/AdminHeader';
+import { useToast } from '../../components/ToastProvider';
+import ConfirmModal from '../../components/ConfirmModal';
+import InputModal from '../../components/InputModal';
 import {
   AiOutlineArrowLeft,
   AiOutlineTeam,
@@ -45,6 +48,26 @@ export default function AdminUsers() {
   const [filterType, setFilterType] = useState<'all' | 'banned' | 'active'>('all');
   const [adminData, setAdminData] = useState<any>(null);
   const navigate = useNavigate();
+  const { showToast } = useToast();
+
+  // Modal states
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
+  const [inputModal, setInputModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message?: string;
+    placeholder?: string;
+    defaultValue?: string;
+    onConfirm: (value: string) => void;
+    required?: boolean;
+  }>({ isOpen: false, title: '', onConfirm: () => {} });
 
   useEffect(() => {
     async function init() {
@@ -69,69 +92,128 @@ export default function AdminUsers() {
   }
 
   async function handleBanUser(userId: string, username: string) {
-    const reason = prompt(`Ban reason for ${username}:`);
-    if (!reason) return;
+    setInputModal({
+      isOpen: true,
+      title: `Ban ${username}`,
+      message: 'Enter reason for banning this user:',
+      placeholder: 'Reason for ban...',
+      required: true,
+      onConfirm: async (reason) => {
+        // Store data for ban type selection
+        (window as any).__banUserId = userId;
+        (window as any).__banReason = reason;
 
-    const isPermanent = confirm('Permanent ban?\n\nPress OK for permanent ban\nPress Cancel for temporary ban');
+        setConfirmModal({
+          isOpen: true,
+          title: 'Select Ban Type',
+          message: 'Choose Permanent Ban or Cancel to select temporary ban with custom duration.',
+          type: 'danger',
+          onConfirm: async () => {
+            // Permanent ban
+            const result = await banUser(userId, reason, 'permanent', undefined);
 
-    let bannedUntil: string | undefined;
-    if (!isPermanent) {
-      const days = prompt('Number of days for ban:', '7');
-      if (!days || isNaN(Number(days))) return;
-      const date = new Date();
-      date.setDate(date.getDate() + parseInt(days));
-      bannedUntil = date.toISOString();
-    }
+            if (result.success) {
+              showToast('User permanently banned successfully', 'success');
+              loadUsers();
+            } else {
+              showToast(result.error || 'An error occurred during the ban', 'error');
+            }
 
-    const result = await banUser(
-      userId,
-      reason,
-      isPermanent ? 'permanent' : 'temporary',
-      bannedUntil
-    );
-
-    if (result.success) {
-      alert('[Success] User banned successfully');
-      loadUsers();
-    } else {
-      alert('[Error] ' + (result.error || 'An error occurred during the ban'));
-    }
+            // Clean up
+            delete (window as any).__banUserId;
+            delete (window as any).__banReason;
+          }
+        });
+      }
+    });
   }
 
-  async function handleUnbanUser(userId: string, username: string) {
-    if (!confirm(`Do you want to unban ${username}?`)) return;
+  // Helper function for temporary ban
+  const handleTemporaryBan = () => {
+    const userId = (window as any).__banUserId;
+    const reason = (window as any).__banReason;
 
-    const result = await unbanUser(userId);
-    if (result.success) {
-      alert('[Success] User unbanned successfully');
-      loadUsers();
-    } else {
-      alert('[Error] An error occurred');
-    }
+    if (!userId || !reason) return;
+
+    setInputModal({
+      isOpen: true,
+      title: 'Temporary Ban Duration',
+      message: 'Enter number of days for the ban:',
+      placeholder: 'Enter days...',
+      defaultValue: '7',
+      required: true,
+      onConfirm: async (days) => {
+        const daysNum = parseInt(days);
+        if (isNaN(daysNum) || daysNum <= 0) {
+          showToast('Please enter a valid number of days', 'error');
+          return;
+        }
+
+        const date = new Date();
+        date.setDate(date.getDate() + daysNum);
+        const bannedUntil = date.toISOString();
+
+        const result = await banUser(userId, reason, 'temporary', bannedUntil);
+
+        if (result.success) {
+          showToast(`User temporarily banned for ${days} days`, 'success');
+          loadUsers();
+        } else {
+          showToast(result.error || 'An error occurred during the ban', 'error');
+        }
+
+        // Clean up
+        delete (window as any).__banUserId;
+        delete (window as any).__banReason;
+      }
+    });
+  };
+
+  async function handleUnbanUser(userId: string, username: string) {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Unban User',
+      message: `Are you sure you want to unban ${username}?`,
+      type: 'info',
+      onConfirm: async () => {
+        const result = await unbanUser(userId);
+        if (result.success) {
+          showToast('User unbanned successfully', 'success');
+          loadUsers();
+        } else {
+          showToast('An error occurred while unbanning user', 'error');
+        }
+      }
+    });
   }
 
   async function handleDeleteUser(userId: string, username: string) {
     if (!adminData?.permissions?.delete_users) {
-      alert('❌ You do not have permission to delete users (Super Admin only)');
+      showToast('You do not have permission to delete users (Super Admin only)', 'error');
       return;
     }
 
-    const confirmation = prompt(
-      `[Warning] Delete user permanently!\n\nThis will delete:\n- User account\n- All their posts\n- All their comments\n- All their likes\n\nTo confirm deletion, type the username: ${username}`
-    );
+    setInputModal({
+      isOpen: true,
+      title: '⚠️ Delete User Permanently',
+      message: `WARNING: This will permanently delete:\n• User account\n• All their posts\n• All their comments\n• All their likes\n\nTo confirm deletion, type the username: ${username}`,
+      placeholder: `Type "${username}" to confirm`,
+      required: true,
+      onConfirm: async (confirmation) => {
+        if (confirmation !== username) {
+          showToast('Username does not match. Operation cancelled', 'error');
+          return;
+        }
 
-    if (confirmation !== username) {
-      alert('[Error] Operation cancelled');
-      return;
-    }
-
-    const result = await deleteUser(userId);
-    if (result.success) {
-      alert('[Success] User deleted permanently');
-      loadUsers();
-    } else {
-      alert('[Error] An error occurred during deletion');
-    }
+        const result = await deleteUser(userId);
+        if (result.success) {
+          showToast('User deleted permanently', 'success');
+          loadUsers();
+        } else {
+          showToast('An error occurred during deletion', 'error');
+        }
+      }
+    });
   }
 
   const filteredUsers = users.filter(user => {
@@ -522,6 +604,39 @@ export default function AdminUsers() {
           </div>
         )}
       </main>
+
+      {/* Modals */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => {
+          setConfirmModal({ ...confirmModal, isOpen: false });
+          // Check if this is the ban type modal and offer temporary ban option
+          if (confirmModal.title === 'Select Ban Type') {
+            handleTemporaryBan();
+          }
+        }}
+        onConfirm={() => {
+          confirmModal.onConfirm();
+          setConfirmModal({ ...confirmModal, isOpen: false });
+        }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
+
+      <InputModal
+        isOpen={inputModal.isOpen}
+        onClose={() => setInputModal({ ...inputModal, isOpen: false })}
+        onConfirm={(value) => {
+          inputModal.onConfirm(value);
+          setInputModal({ ...inputModal, isOpen: false });
+        }}
+        title={inputModal.title}
+        message={inputModal.message}
+        placeholder={inputModal.placeholder}
+        defaultValue={inputModal.defaultValue}
+        required={inputModal.required}
+      />
     </div>
   );
 }

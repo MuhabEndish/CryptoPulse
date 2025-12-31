@@ -7,6 +7,7 @@ import {
   supabase
 } from '../../services/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { useToast } from '../../components/ToastProvider';
 import AdminHeader from '../../components/AdminHeader';
 import {
   AiOutlineHeart,
@@ -36,7 +37,11 @@ export default function AdminPosts() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [postToDelete, setPostToDelete] = useState<{ id: string; username: string } | null>(null);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   useEffect(() => {
     async function init() {
@@ -59,20 +64,34 @@ export default function AdminPosts() {
     setLoading(false);
   }
 
-  async function handleDeletePost(postId: string, username: string) {
-    const reason = prompt(`Reason for deleting ${username}'s post:`);
-    if (!reason) return;
+  function handleDeletePost(postId: string, username: string) {
+    setPostToDelete({ id: postId, username });
+    setShowDeleteModal(true);
+  }
 
-    if (!confirm('Do you want to delete this post permanently?')) return;
+  async function confirmDelete() {
+    if (!postToDelete || !deleteReason.trim()) {
+      showToast('Please provide a reason for deletion', 'warning');
+      return;
+    }
 
-    const result = await adminDeletePost(postId, reason);
+    const result = await adminDeletePost(postToDelete.id, deleteReason);
     if (result.success) {
-      alert('[Success] Post deleted successfully');
+      showToast('Post deleted successfully', 'success');
       loadPosts();
       setSelectedPost(null);
+      setShowDeleteModal(false);
+      setDeleteReason('');
+      setPostToDelete(null);
     } else {
-      alert('[Error] An error occurred during deletion');
+      showToast('An error occurred during deletion', 'error');
     }
+  }
+
+  function cancelDelete() {
+    setShowDeleteModal(false);
+    setDeleteReason('');
+    setPostToDelete(null);
   }
 
   const filteredPosts = posts.filter(post =>
@@ -531,6 +550,140 @@ export default function AdminPosts() {
           </div>
         )}
       </main>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && postToDelete && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}
+          onClick={cancelDelete}
+        >
+          <div
+            style={{
+              background: 'var(--card)',
+              borderRadius: '16px',
+              maxWidth: '500px',
+              width: '100%',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: '24px',
+              borderBottom: '1px solid var(--border)'
+            }}>
+              <h2 style={{
+                fontSize: '20px',
+                fontWeight: '700',
+                margin: 0,
+                color: 'var(--text)'
+              }}>
+                Delete Post by @{postToDelete.username}
+              </h2>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '24px' }}>
+              <p style={{
+                margin: '0 0 16px 0',
+                color: 'var(--text-secondary)',
+                fontSize: '14px'
+              }}>
+                Please provide a reason for deleting this post. This action cannot be undone.
+              </p>
+              <textarea
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                placeholder="Enter deletion reason..."
+                style={{
+                  width: '100%',
+                  minHeight: '120px',
+                  padding: '12px',
+                  background: 'var(--bg)',
+                  border: '2px solid var(--border)',
+                  borderRadius: '8px',
+                  color: 'var(--text)',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                  resize: 'vertical',
+                  outline: 'none'
+                }}
+                onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+                onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+                autoFocus
+              />
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '20px 24px',
+              borderTop: '1px solid var(--border)',
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={cancelDelete}
+                style={{
+                  padding: '10px 20px',
+                  background: 'var(--bg)',
+                  color: 'var(--text)',
+                  border: '2px solid var(--border)',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--border)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg)'}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={!deleteReason.trim()}
+                style={{
+                  padding: '10px 20px',
+                  background: deleteReason.trim() ? '#ef4444' : '#666',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: deleteReason.trim() ? 'pointer' : 'not-allowed',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  transition: 'all 0.2s',
+                  opacity: deleteReason.trim() ? 1 : 0.5
+                }}
+                onMouseEnter={(e) => {
+                  if (deleteReason.trim()) {
+                    e.currentTarget.style.background = '#dc2626';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (deleteReason.trim()) {
+                    e.currentTarget.style.background = '#ef4444';
+                  }
+                }}
+              >
+                Delete Post
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

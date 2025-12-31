@@ -11,6 +11,9 @@ import {
 } from '../../services/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import AdminHeader from '../../components/AdminHeader';
+import { useToast } from '../../components/ToastProvider';
+import ConfirmModal from '../../components/ConfirmModal';
+import InputModal from '../../components/InputModal';
 import {
   AiOutlineEye,
   AiOutlineCheck,
@@ -48,6 +51,26 @@ export default function AdminReports() {
   const [filter, setFilter] = useState<string>('pending');
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const navigate = useNavigate();
+  const { showToast } = useToast();
+
+  // Modal states
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
+  const [inputModal, setInputModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message?: string;
+    placeholder?: string;
+    defaultValue?: string;
+    onConfirm: (value: string) => void;
+    required?: boolean;
+  }>({ isOpen: false, title: '', onConfirm: () => {} });
 
   useEffect(() => {
     async function init() {
@@ -75,80 +98,162 @@ export default function AdminReports() {
   }
 
   async function handleResolve(reportId: string) {
-    if (!confirm('Do you want to mark this report as "Resolved"?')) return;
-
-    const result = await updateReportStatus(reportId, 'resolved');
-    if (result.success) {
-      alert('[Success] Report status updated');
-      loadReports();
-    } else {
-      alert('[Error] An error occurred');
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Resolve Report',
+      message: 'Do you want to mark this report as "Resolved"?',
+      type: 'info',
+      onConfirm: async () => {
+        const result = await updateReportStatus(reportId, 'resolved');
+        if (result.success) {
+          showToast('Report status updated successfully', 'success');
+          loadReports();
+        } else {
+          showToast('An error occurred while updating report', 'error');
+        }
+      }
+    });
   }
 
   async function handleDismiss(reportId: string) {
-    if (!confirm('Do you want to dismiss this report?')) return;
-
-    const result = await updateReportStatus(reportId, 'dismissed');
-    if (result.success) {
-      alert('[Success] Report dismissed');
-      loadReports();
-    } else {
-      alert('[Error] An error occurred');
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Dismiss Report',
+      message: 'Do you want to dismiss this report? This action cannot be undone.',
+      type: 'warning',
+      onConfirm: async () => {
+        const result = await updateReportStatus(reportId, 'dismissed');
+        if (result.success) {
+          showToast('Report dismissed successfully', 'success');
+          loadReports();
+        } else {
+          showToast('An error occurred while dismissing report', 'error');
+        }
+      }
+    });
   }
 
   async function handleDeleteContent(report: Report) {
-    const reason = prompt('Reason for deletion (optional):') || 'Reported content';
+    setInputModal({
+      isOpen: true,
+      title: 'Delete Content',
+      message: 'Enter reason for deletion (optional):',
+      placeholder: 'Reason for deletion...',
+      defaultValue: 'Reported content',
+      required: false,
+      onConfirm: async (reason) => {
+        setConfirmModal({
+          isOpen: true,
+          title: 'Confirm Deletion',
+          message: `Are you sure you want to delete this ${report.content_type === 'post' ? 'post' : 'comment'}? This action cannot be undone.`,
+          type: 'danger',
+          onConfirm: async () => {
+            let result;
+            if (report.content_type === 'post') {
+              result = await adminDeletePost(report.content_id, reason);
+            } else {
+              result = await adminDeleteComment(report.content_id, reason);
+            }
 
-    if (!confirm(`Do you want to delete this ${report.content_type === 'post' ? 'post' : 'comment'}?`)) return;
-
-    let result;
-    if (report.content_type === 'post') {
-      result = await adminDeletePost(report.content_id, reason);
-    } else {
-      result = await adminDeleteComment(report.content_id, reason);
-    }
-
-    if (result.success) {
-      await updateReportStatus(report.id, 'resolved');
-      alert('[Success] Content deleted successfully');
-      loadReports();
-    } else {
-      alert('[Error] An error occurred during deletion');
-    }
+            if (result.success) {
+              await updateReportStatus(report.id, 'resolved');
+              showToast('Content deleted successfully', 'success');
+              loadReports();
+            } else {
+              showToast('An error occurred during deletion', 'error');
+            }
+          }
+        });
+      }
+    });
   }
 
   async function handleBanUser(report: Report) {
-    const reason = prompt('Reason for ban:');
-    if (!reason) return;
+    setInputModal({
+      isOpen: true,
+      title: 'Ban User',
+      message: 'Enter reason for banning this user:',
+      placeholder: 'Reason for ban...',
+      required: true,
+      onConfirm: async (reason) => {
+        // First modal closed, show ban type selection
+        setConfirmModal({
+          isOpen: true,
+          title: 'Select Ban Type',
+          message: 'Choose Permanent Ban or Cancel to select temporary ban with custom duration.',
+          type: 'danger',
+          onConfirm: async () => {
+            // Permanent ban selected
+            const result = await banUser(
+              report.reported_user_id,
+              reason,
+              'permanent',
+              undefined
+            );
 
-    const isPermanent = confirm('Permanent ban? (Press Cancel for temporary ban)');
+            if (result.success) {
+              await updateReportStatus(report.id, 'resolved');
+              showToast('User permanently banned successfully', 'success');
+              loadReports();
+            } else {
+              showToast(result.error || 'An error occurred while banning user', 'error');
+            }
+          }
+        });
 
-    let bannedUntil: string | undefined;
-    if (!isPermanent) {
-      const days = prompt('Number of days for ban:', '7');
-      if (!days) return;
-      const date = new Date();
-      date.setDate(date.getDate() + parseInt(days));
-      bannedUntil = date.toISOString();
-    }
-
-    const result = await banUser(
-      report.reported_user_id,
-      reason,
-      isPermanent ? 'permanent' : 'temporary',
-      bannedUntil
-    );
-
-    if (result.success) {
-      await updateReportStatus(report.id, 'resolved');
-      alert('[Success] User banned successfully');
-      loadReports();
-    } else {
-      alert('[Error] ' + (result.error || 'An error occurred'));
-    }
+        // Store the reason for temporary ban if user clicks cancel
+        (window as any).__tempBanReason = reason;
+        (window as any).__tempBanReport = report;
+      }
+    });
   }
+
+  // Helper function for temporary ban (called when cancel is clicked on ban type modal)
+  const handleTemporaryBan = () => {
+    const reason = (window as any).__tempBanReason;
+    const report = (window as any).__tempBanReport;
+
+    if (!reason || !report) return;
+
+    setInputModal({
+      isOpen: true,
+      title: 'Temporary Ban Duration',
+      message: 'Enter number of days for the ban:',
+      placeholder: 'Enter days...',
+      defaultValue: '7',
+      required: true,
+      onConfirm: async (days) => {
+        const daysNum = parseInt(days);
+        if (isNaN(daysNum) || daysNum <= 0) {
+          showToast('Please enter a valid number of days', 'error');
+          return;
+        }
+
+        const date = new Date();
+        date.setDate(date.getDate() + daysNum);
+        const bannedUntil = date.toISOString();
+
+        const result = await banUser(
+          report.reported_user_id,
+          reason,
+          'temporary',
+          bannedUntil
+        );
+
+        if (result.success) {
+          await updateReportStatus(report.id, 'resolved');
+          showToast(`User temporarily banned for ${days} days`, 'success');
+          loadReports();
+        } else {
+          showToast(result.error || 'An error occurred while banning user', 'error');
+        }
+
+        // Clean up
+        delete (window as any).__tempBanReason;
+        delete (window as any).__tempBanReport;
+      }
+    });
+  };
 
   const getReasonText = (reason: string) => {
     const reasons: Record<string, string> = {
@@ -527,6 +632,37 @@ export default function AdminReports() {
           </div>
         )}
       </main>
+
+      {/* Modals */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => {
+          setConfirmModal({ ...confirmModal, isOpen: false });
+          // If this is the ban type modal and user clicks cancel, show temporary ban input
+          if (confirmModal.title === 'Select Ban Type') {
+            setTimeout(handleTemporaryBan, 100);
+          }
+        }}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText={confirmModal.title === 'Select Ban Type' ? 'Permanent Ban' : 'Confirm'}
+        cancelText={confirmModal.title === 'Select Ban Type' ? 'Temporary Ban' : 'Cancel'}
+      />
+
+      <InputModal
+        isOpen={inputModal.isOpen}
+        onClose={() => setInputModal({ ...inputModal, isOpen: false })}
+        onConfirm={inputModal.onConfirm}
+        title={inputModal.title}
+        message={inputModal.message}
+        placeholder={inputModal.placeholder}
+        defaultValue={inputModal.defaultValue}
+        required={inputModal.required}
+        confirmText="Continue"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

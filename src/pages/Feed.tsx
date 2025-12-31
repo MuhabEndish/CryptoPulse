@@ -75,7 +75,7 @@ export default function Feed() {
       .from("posts")
       .select(`
         *,
-        likes(id),
+        likes(id, user_id),
         comments(id),
         profiles(username, avatar_url, privacy_settings)
       `)
