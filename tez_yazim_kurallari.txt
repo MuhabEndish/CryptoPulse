@@ -1,0 +1,78 @@
+
+MANİSA CELAL BAYAR ÜNİVERSİTESİ
+YAZILIM MÜHENDİSLİĞİ BÖLÜMÜ
+LİSANS BİTİRME TEZİ – YAZIM KURALLARI
+
+GENEL YAZIM KURALLARI
+- Yazı tipi: Times New Roman
+- Yazı boyutu: 12 punto
+- Ana metin satır aralığı: 1,5
+- Özet, Abstract, Teşekkür, İçindekiler, Şekiller Dizini, Tablolar Dizini: 1 satır aralığı
+- Paragraf başı girintisi: 1,25 cm
+- Paragraflar arası: 1 satır boşluk
+- Sayfa düzeni: İki yana yaslı
+- Her ana bölüm yeni sayfadan başlamalıdır
+- Benzerlik oranı %30’u geçmemelidir
+
+KAPAK VE ÖN SAYFALAR
+- Üniversite, fakülte, bölüm bilgileri yazılmalıdır
+- Tez adı, yazar adı, danışman adı yer almalıdır
+- Yıl bilgisi eklenmelidir
+- Tez sırtı örneğine uygun olmalıdır
+
+İÇİNDEKİLER
+- Times New Roman, 12 punto
+- 1 satır boşluk bırakılır
+- Bölüm ve sayfa numaraları hizalı olmalıdır
+
+BAŞLIKLAR
+- 1. derece başlıklar: BÜYÜK HARF
+- 2. ve 3. derece başlıklar: İlk harf büyük
+- Başlıklar numaralandırılmalıdır
+- Giriş bölümünün sonunda tezin amacı mutlaka belirtilmelidir
+
+ŞEKİLLER
+- Şekil numarası ve adı verilmelidir
+- Şekil adı tek satıra sığıyorsa ortalanır, sığmıyorsa iki yana yaslanır
+- Şekiller metin içinde mutlaka açıklanmalıdır
+- Eklerde: Şekil EK A.1 formatı kullanılır
+
+TABLOLAR
+- Tablo başlığı verilmelidir
+- Tablo tek satır aralıklı olmalıdır
+- Tablo içeriği ortalanmalıdır
+- Tablo adı tek satıra sığıyorsa ortalanır
+- Eklerde: Tablo EK B.3 formatı kullanılır
+
+ÖZET
+- Tek satır aralıklı yazılır
+- İki yana yaslı olmalıdır
+- Paragraflar arasında 1 satır boşluk
+- Anahtar kelime sayısı en fazla 7
+- Sayfa sayısı belirtilmelidir
+
+ABSTRACT
+- Özet ile aynı yazım kurallarına sahiptir
+- Keywords en fazla 7 adet olmalıdır
+
+TEŞEKKÜR
+- Tek satır aralıklı yazılır
+- Paragraf başı girintisi 1,25 cm
+- Proje destekliyse kurum ve proje numarası yazılmalıdır
+- Metin sonunda Ad Soyad ve yer-yıl bilgisi eklenir
+
+KAYNAKLAR
+- 1 satır boşluk bırakılır
+- Kitap, makale, tez, bildiri, patent türüne göre yazılmalıdır
+- Yazar soyadı, adın ilk harfi formatı kullanılır
+- Metin içi atıflarda çok yazarlı çalışmalarda “ve ark.” kullanılır
+
+EKLER
+- 1 satır aralıklı yazılır
+- Yazı tipi: Times New Roman 12 punto
+- Her ek numaralandırılır (EK A, EK B…)
+- Şekil ve tablolar ek numarasına göre adlandırılır
+
+NOT
+- Referans bölümü hariç tüm ana metin 1,5 satır aralıklıdır
+- Literatür özetinin sonunda “Tezin Amacı” başlığı bulunmalıdır
