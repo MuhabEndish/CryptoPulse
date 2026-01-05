@@ -1,4 +1,4 @@
-# Crypto Social Tracker 📈
+# CryptoPulse 📈
 
 A comprehensive cryptocurrency tracking and social platform that combines real-time market data with community engagement features. Track your favorite coins, set price alerts, share insights, and connect with other crypto enthusiasts.
 
