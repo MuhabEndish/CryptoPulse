@@ -116,7 +116,7 @@ npm run test:coverage
 ## 📁 Project Structure
 
 ```
-crypto-social-tracker/
+CryptoPulse/
 ├── src/
 │   ├── components/        # Reusable React components
 │   │   ├── __tests__/     # Component tests
